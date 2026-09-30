@@ -1,0 +1,30 @@
+# ==============================
+# EVA - Archivos ignorados
+# ==============================
+
+# Entorno virtual de Python
+.venv/
+venv/
+
+# Configuración privada de Spotify
+config.py
+
+# Caché/autenticación de Spotify
+.cache
+.cache-*
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Visual Studio Code
+.vscode/
+
+# Archivos temporales
+*.tmp
+*.log
+
+# Datos personales de EVA
+preferencias.json
+recordatorios.json
