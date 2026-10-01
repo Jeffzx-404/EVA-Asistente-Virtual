@@ -6,11 +6,11 @@ Este proyecto fue desarrollado como parte del curso de Fundamentos de Programaci
 
 ## 🧑‍💻 Integrantes
 
-Bob el de la moto
-Angel K-Brito
-Junior el que le gusta la Coca-Cola
-Jose le gustan las malcriadas
-Rudy vive en la chacra
+-Bob el constructor
+-Angel K-Brito
+-Junior el que le gusta la Coca-Cola
+-Jose le gustan las malcriadas
+-Rudy vive en la chacra
 
 
 ## 🚀 Funciones actuales
