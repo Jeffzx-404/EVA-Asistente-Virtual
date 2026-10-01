@@ -1,4 +1,4 @@
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import messagebox, scrolledtext, font
 import threading
 from queue import Queue, Empty
@@ -23,7 +23,7 @@ class InterfazEVA:
         self._simbolos_estado = {"LISTA": "✓", "ESCUCHANDO": "◎",
                                  "PROCESANDO": "◈", "HABLANDO": "≋"}
         self._fondos_estado = {"LISTA": "#16372f", "ESCUCHANDO": "#18344e",
-                               "PROCESANDO": "#3b3020", "HABLANDO": "#302747"}
+                               "PROCESANDO": "#3b3020", "HABLANDO": "#615973"}
         self.ventana = tk.Tk()
         self.ventana.title("EVA - Asistente Virtual")
         self.ventana.geometry("1100x760")
