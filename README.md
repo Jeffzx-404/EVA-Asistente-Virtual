@@ -6,7 +6,7 @@ Este proyecto fue desarrollado como parte del curso de Fundamentos de Programaci
 
 ## 🧑‍💻 Integrantes
 
-- Bob el constructor
+- Bob el novio de michael
 - Angel K-Brito
 - Junior el que le gusta la Coca-Cola
 - Jose le gustan las malcriadas
