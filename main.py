@@ -102,7 +102,11 @@ def hablar(texto):
                 texto
             )
 
-            motor_voz.runAndWait()
+            interfaz.iniciar_actividad("HABLANDO")
+            try:
+                motor_voz.runAndWait()
+            finally:
+                interfaz.finalizar_actividad("HABLANDO")
 
             motor_voz.stop()
 
@@ -120,17 +124,22 @@ def hablar(texto):
 
 def escuchar():
 
-    with sr.Microphone() as source:
+    interfaz.iniciar_actividad("ESCUCHANDO")
+    try:
+        with sr.Microphone() as source:
 
-        print("\n🎤 Escuchando...")
+            print("\n🎤 Escuchando...")
 
-        reconocedor.adjust_for_ambient_noise(
-            source,
-            duration=1
-        )
+            reconocedor.adjust_for_ambient_noise(
+                source,
+                duration=1
+            )
 
-        audio = reconocedor.listen(source)
+            audio = reconocedor.listen(source)
+    finally:
+        interfaz.finalizar_actividad("ESCUCHANDO")
 
+    interfaz.iniciar_actividad("PROCESANDO")
     try:
 
         comando = reconocedor.recognize_google(
@@ -168,6 +177,9 @@ def escuchar():
         )
 
         return ""
+
+    finally:
+        interfaz.finalizar_actividad("PROCESANDO")
 
 
 # ==================================================
@@ -1669,7 +1681,7 @@ def procesar_comando(comando):
                 hablar(
                     resultado["mensaje"]
                 )
-    
+
 
 
     # ==================================================
@@ -1936,7 +1948,7 @@ def procesar_comando(comando):
                 "los recordatorios."
             )
 
- 
+
     # ==================================================
     # FECHA ACTUAL
     # ==================================================
@@ -2127,14 +2139,13 @@ def procesar_desde_interfaz(
 
 
 def escuchar_desde_interfaz():
-
     comando = escuchar()
-
     if comando != "":
-
-        procesar_comando(
-            comando
-        )
+        interfaz.iniciar_actividad("PROCESANDO")
+        try:
+            procesar_comando(comando)
+        finally:
+            interfaz.finalizar_actividad("PROCESANDO")
 
 def avisar_recordatorio(texto):
 
@@ -2182,19 +2193,17 @@ nombre_usuario = preferencias.get(
     ""
 )
 
-if nombre_usuario != "":
+def saludar_al_iniciar():
+    if nombre_usuario != "":
+        hablar(f"Hola {nombre_usuario}. Soy EVA y estoy lista para ayudarte.")
+    else:
+        hablar("Hola. Soy EVA y estoy lista para ayudarte.")
 
-    hablar(
-        f"Hola {nombre_usuario}. "
-        "Soy EVA y estoy lista para ayudarte."
-    )
 
-else:
-
-    hablar(
-        "Hola. Soy EVA y estoy lista para ayudarte."
-    )
-
+interfaz.ventana.after(
+    0,
+    lambda: threading.Thread(target=saludar_al_iniciar, daemon=True).start()
+)
 
 # ==================================================
 # INICIAR EVA
