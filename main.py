@@ -42,6 +42,43 @@ from spotify_control import (
     cambiar_volumen
 )
 
+#Bromas xde
+
+respuestas_broma = {
+    "quién es ángel": (
+        "Ángel es muy bueno en matemáticas y programación... "
+        "Pero tiene un fetiche por las mayores y le gusta que lo maltraten, además ama a Maicol en secreto, y le encanta la Coca-Cola de 3 litros"
+    ),
+
+    "quién es junior": (
+        "Junior es una persona respetuosa y seria... "
+        "Pero en secreto es fan de Marina Gold y su pagina favorita es de color amarillo. ademas por las noches rompe la chapa de Angel y se mete a su cuarto, y siempre lleva una Coca-Cola en su mochila"
+    ),
+
+    "quién es josé": (
+        "José es una persona estudiosa y tiene bastantes conocimientos sobre programación... "
+        "Pero le gustan las chicas malcriadas y es rompe cunas, además le gusta las alturas especialmente estar en el decimo piso"
+    ),
+
+    "quién es rudy": (
+        "Rudy es responsable, se esfuerza por aprender y además es bueno en el fútbol... "
+        "Pero en su whatsapp tiene los stickers mas raros del salón, además creo que patea con los dos pies y hace cosas turbias cuando se queda en el colegio por las noches"
+    ),
+
+    "quién es bob": (
+        "Bob es el amo y señor del código... "
+        "pero me tiene trabajando horas extra. "
+        "Solicito oficialmente vacaciones, mejor procesador y aumento de memoria RAM."
+    ),
+
+    "quién es el doctor román": (
+        "El doctor Román es una persona responsable, resiliente y con ganas de aprender, "
+        "Pero le gustan las aguas y siempre empila a la gente para armar la rumba, también va tanto a la casa de Angel que ya parece su casa, y creo que ahí pasan cositas, hummm..."
+    ),
+}
+
+
+
 #EVA SOLO PUEDE HABLAR UNA FRASE A LA VEZ Y EVITA HABLAR AL MISMO TIEMPO QUE OTRA EJECUCION
 
 bloqueo_voz = threading.Lock()
@@ -515,6 +552,13 @@ def procesar_comando(comando):
         "eva",
         ""
     ).strip()
+
+
+    comando_limpio = comando.lower().strip()
+
+    if comando_limpio in respuestas_broma:
+        hablar(respuestas_broma[comando_limpio])
+        return
 
 
     # ==================================================
