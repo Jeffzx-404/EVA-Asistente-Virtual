@@ -33,6 +33,8 @@ from datetime import datetime, timedelta
 # ==================================================
 
 from spotify_control import (
+    inicializar_spotify,
+    spotify_disponible,
     reproducir_cancion,
     pausar_musica,
     continuar_musica,
@@ -284,6 +286,9 @@ preferencias = cargar_preferencias()
 
 interfaz = InterfazEVA()
 
+# Spotify se comprueba sin bloquear la interfaz ni las demás funciones.
+threading.Thread(target=inicializar_spotify, daemon=True).start()
+
 
 # Spotify será la aplicación favorita por defecto
 if preferencias.get(
@@ -469,14 +474,16 @@ def cerrar_aplicacion(aplicacion):
 
     elif aplicacion == "spotify":
 
-        os.system(
-            "taskkill /F /IM "
-            "Spotify.exe >nul 2>&1"
-        )
-
-        hablar(
-            "Cerrando Spotify."
-        )
+        try:
+            resultado = subprocess.run(
+                ["taskkill", "/F", "/IM", "Spotify.exe"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                check=False, timeout=5
+            )
+            hablar("Cerrando Spotify." if resultado.returncode == 0
+                   else "Spotify no está abierto en este equipo.")
+        except (OSError, subprocess.SubprocessError):
+            hablar("No pude cerrar Spotify.")
 
 
     elif aplicacion == "explorador":
@@ -1598,6 +1605,10 @@ def procesar_comando(comando):
 
         else:
 
+            if not spotify_disponible():
+                hablar("Spotify no está configurado en este equipo.")
+                return True
+
             hablar(
                 f"Buscando tu canción favorita, "
                 f"{cancion}, en Spotify."
@@ -1625,11 +1636,7 @@ def procesar_comando(comando):
 
             except Exception as error:
 
-                print(
-                    "Error reproduciendo "
-                    "canción favorita:",
-                    error
-                )
+                # No mostrar datos internos de errores de Spotify.
 
                 hablar(
                     "No pude reproducir "
@@ -1702,6 +1709,10 @@ def procesar_comando(comando):
             )
 
         else:
+
+            if not spotify_disponible():
+                hablar("Spotify no está configurado en este equipo.")
+                return True
 
             hablar(
                 f"Buscando {busqueda} "
@@ -1783,25 +1794,8 @@ def procesar_comando(comando):
         or "pausa la canción" in comando
     ):
 
-        try:
-
-            pausar_musica()
-
-            hablar(
-                "Música pausada."
-            )
-
-        except Exception as error:
-
-            print(
-                "Error de Spotify:",
-                error
-            )
-
-            hablar(
-                "No pude pausar la música."
-            )
-
+        resultado = pausar_musica()
+        hablar("Música pausada." if resultado["exito"] else resultado["mensaje"])
 
     # ==================================================
     # SPOTIFY - CONTINUAR
@@ -1816,26 +1810,8 @@ def procesar_comando(comando):
         or "continua reproduciendo" in comando
     ):
 
-        try:
-
-            continuar_musica()
-
-            hablar(
-                "Continuando la reproducción."
-            )
-
-        except Exception as error:
-
-            print(
-                "Error de Spotify:",
-                error
-            )
-
-            hablar(
-                "No pude continuar "
-                "la reproducción."
-            )
-
+        resultado = continuar_musica()
+        hablar("Continuando la reproducción." if resultado["exito"] else resultado["mensaje"])
 
     # ==================================================
     # SPOTIFY - SIGUIENTE CANCIÓN
@@ -1848,26 +1824,8 @@ def procesar_comando(comando):
         or "siguiente musica" in comando
     ):
 
-        try:
-
-            siguiente_cancion()
-
-            hablar(
-                "Siguiente canción."
-            )
-
-        except Exception as error:
-
-            print(
-                "Error de Spotify:",
-                error
-            )
-
-            hablar(
-                "No pude cambiar "
-                "de canción."
-            )
-
+        resultado = siguiente_cancion()
+        hablar("Siguiente canción." if resultado["exito"] else resultado["mensaje"])
 
     # ==================================================
     # SPOTIFY - CANCIÓN ANTERIOR
@@ -1880,27 +1838,8 @@ def procesar_comando(comando):
         or "musica anterior" in comando
     ):
 
-        try:
-
-            cancion_anterior()
-
-            hablar(
-                "Volviendo a la "
-                "canción anterior."
-            )
-
-        except Exception as error:
-
-            print(
-                "Error de Spotify:",
-                error
-            )
-
-            hablar(
-                "No pude volver a "
-                "la canción anterior."
-            )
-
+        resultado = cancion_anterior()
+        hablar("Volviendo a la canción anterior." if resultado["exito"] else resultado["mensaje"])
 
     # ==================================================
     # SPOTIFY - CAMBIAR VOLUMEN
