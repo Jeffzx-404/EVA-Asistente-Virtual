@@ -528,10 +528,6 @@ def procesar_comando(comando):
 
     comando_limpio = comando.lower().strip()
 
-    if comando_limpio in respuestas_broma:
-        hablar(respuestas_broma[comando_limpio])
-        return
-
 
     # ==================================================
     # HORA
