@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, scrolledtext, font
+from tkinter import messagebox, scrolledtext, font, ttk
 import threading
 from queue import Queue, Empty
 
@@ -155,8 +155,11 @@ class InterfazEVA:
         self._vistas["Ajustes"] = ajustes
         tk.Label(ajustes, text="Ajustes", bg=fondo, fg=texto,
                  font=("Segoe UI", 23, "bold")).grid(sticky="w", pady=(0, 18))
-        tarjeta = tk.Frame(ajustes, bg=panel, padx=20, pady=20)
-        tarjeta.grid(sticky="new")
+        ajustes.rowconfigure(1, weight=1)
+        secciones = ttk.Notebook(ajustes)
+        secciones.grid(row=1, column=0, sticky="nsew")
+        tarjeta = tk.Frame(secciones, bg=panel, padx=20, pady=20)
+        secciones.add(tarjeta, text="Spotify")
         tarjeta.columnconfigure(0, weight=1)
         tk.Label(tarjeta, text="Spotify", bg=panel, fg=texto,
                  font=("Segoe UI", 17, "bold")).grid(sticky="w")
@@ -187,6 +190,77 @@ class InterfazEVA:
         self._spotify_callbacks = None
         self._spotify_trabajando = False
         self._configuracion_mostrada = None
+        self._crear_ajustes_gemini(secciones, panel, texto)
+
+    def _crear_ajustes_gemini(self, secciones, panel, texto):
+        tarjeta = tk.Frame(secciones, bg=panel, padx=20, pady=20)
+        secciones.add(tarjeta, text="Inteligencia artificial")
+        tarjeta.columnconfigure(0, weight=1)
+        tk.Label(tarjeta, text="Gemini", bg=panel, fg=texto,
+                 font=("Segoe UI", 17, "bold")).grid(sticky="w")
+        self._estado_gemini = tk.Label(tarjeta, text="● NO CONFIGURADO", bg=panel,
+                                       fg=texto, font=("Segoe UI", 11, "bold"))
+        self._estado_gemini.grid(sticky="w", pady=(16, 6))
+        self._mensaje_gemini = tk.Label(tarjeta, bg=panel, fg="#b9c4d8",
+                                        wraplength=490, justify="left")
+        self._mensaje_gemini.grid(sticky="w", pady=(0, 14))
+        tk.Label(tarjeta, text="API Key", bg=panel, fg=texto).grid(sticky="w")
+        self._clave_gemini = tk.Entry(tarjeta, show="*", bg="#0e1522", fg=texto,
+                                      insertbackground=texto, font=("Segoe UI", 11))
+        self._clave_gemini.grid(sticky="ew", ipady=7, pady=(4, 14))
+        tk.Label(tarjeta, text="La clave guardada no se muestra. Guarda antes de probar.\n"
+                 "Al desconectar se borra la clave local; GEMINI_API_KEY sigue disponible si existe.",
+                 bg=panel, fg="#b9c4d8", wraplength=490, justify="left").grid(sticky="w", pady=8)
+        self._gemini_callbacks = None
+        self._gemini_trabajando = False
+        self._botones_gemini = []
+        for indice, nombre in enumerate(("Guardar configuración", "Probar conexión", "Desconectar"), 1):
+            boton = self._crear_boton(tarjeta, nombre,
+                                     lambda accion=indice: self._accion_gemini(accion), "#6853ba")
+            boton.grid(sticky="ew", pady=4)
+            boton.configure(state="disabled")
+            self._botones_gemini.append(boton)
+
+    def configurar_gemini(self, consultar, guardar, probar, desconectar):
+        self._gemini_callbacks = (consultar, guardar, probar, desconectar)
+        self._refrescar_gemini()
+
+    def _refrescar_gemini(self):
+        if self._cerrando.is_set():
+            return
+        estado = self._gemini_callbacks[0]()
+        self._estado_gemini.configure(text="● " + estado["estado"].replace("_", " ").upper())
+        self._mensaje_gemini.configure(text=estado["mensaje"])
+        for indice, boton in enumerate(self._botones_gemini):
+            deshabilitado = self._gemini_trabajando or (indice == 1 and estado["ocupado"])
+            boton.configure(state="disabled" if deshabilitado else "normal")
+        self.ventana.after(300, self._refrescar_gemini)
+
+    def _accion_gemini(self, accion):
+        if self._gemini_trabajando or not self._gemini_callbacks:
+            return
+        if accion == 2 and self._clave_gemini.get():
+            messagebox.showinfo("Gemini", "Guarda la clave escrita antes de probar la conexión.")
+            return
+        argumentos = (self._clave_gemini.get(),) if accion == 1 else ()
+        self._gemini_trabajando = True
+        for boton in self._botones_gemini:
+            boton.configure(state="disabled")
+        def trabajar():
+            try:
+                resultado = self._gemini_callbacks[accion](*argumentos)
+            except Exception:
+                resultado = {"exito": False, "mensaje": "No se pudo completar la operación de Gemini."}
+            self._programar(self._terminar_gemini, accion, resultado)
+        threading.Thread(target=trabajar, daemon=True).start()
+
+    def _terminar_gemini(self, accion, resultado):
+        self._gemini_trabajando = False
+        if resultado.get("exito") and accion in (1, 3):
+            self._clave_gemini.delete(0, tk.END)
+        self._mensaje_gemini.configure(text=resultado["mensaje"])
+        if not resultado.get("exito"):
+            messagebox.showinfo("Gemini", resultado["mensaje"])
 
     def configurar_spotify(self, consultar, guardar, conectar, desconectar):
         self._spotify_callbacks = (consultar, guardar, conectar, desconectar)
