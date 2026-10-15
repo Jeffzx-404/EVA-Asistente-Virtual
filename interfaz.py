@@ -52,6 +52,7 @@ class InterfazEVA:
         self.subtitulo = tk.Label(lateral, text="Asistente Virtual", font=("Segoe UI", 10),
                                   bg="#111725", fg="#a8b3c9")
         self.subtitulo.grid(row=2, column=0, sticky="w", padx=24, pady=(0, 28))
+        self._navegacion = {}
         for fila, nombre in enumerate(("Inicio", "Conversación", "Recordatorios", "Alarmas", "Ajustes"), 3):
             activa = nombre == "Conversación"
             item = tk.Frame(lateral, bg="#282943" if activa else "#111725",
@@ -66,11 +67,22 @@ class InterfazEVA:
                      font=("Segoe UI", 8), bg=item.cget("bg"),
                      fg="#baafff" if activa else "#98a4ba", anchor="w").pack(
                          fill="x", padx=23, pady=(0, 8))
+            if nombre in ("Conversación", "Ajustes"):
+                self._navegacion[nombre] = item
+                for widget in (item, *item.winfo_children()):
+                    widget.configure(cursor="hand2")
+                    widget.bind("<Button-1>", lambda evento, vista=nombre: self._mostrar_vista(vista))
         tk.Label(lateral, text="TU ASISTENTE PERSONAL", font=("Segoe UI", 8),
                  bg="#111725", fg="#98a4ba").grid(row=9, column=0, pady=22)
 
-        principal = tk.Frame(self.ventana, bg=fondo)
-        principal.grid(row=0, column=1, sticky="nsew", padx=18, pady=18)
+        contenedor = tk.Frame(self.ventana, bg=fondo)
+        contenedor.grid(row=0, column=1, sticky="nsew", padx=18, pady=18)
+        contenedor.columnconfigure(0, weight=1)
+        contenedor.rowconfigure(0, weight=1)
+        principal = tk.Frame(contenedor, bg=fondo)
+        principal.grid(row=0, column=0, sticky="nsew")
+        self._vistas = {"Conversación": principal}
+        self._crear_ajustes(contenedor, fondo, panel, texto)
         principal.columnconfigure(0, weight=1)
         principal.rowconfigure(1, weight=1)
         encabezado = tk.Frame(principal, bg=fondo)
@@ -130,9 +142,120 @@ class InterfazEVA:
         self.boton.grid(row=1, column=1, sticky="ns", padx=(0, 8))
         self.boton_enviar = self._crear_boton(controles, "ENVIAR", self.presionar_enviar, "#6853ba")
         self.boton_enviar.grid(row=1, column=2, sticky="ns")
+        self._mostrar_vista("Conversación")
         self._actualizar_estado()
         self.entrada.focus_set()
         self._temporizador = self.ventana.after(30, self._vaciar_cola)
+
+    def _crear_ajustes(self, contenedor, fondo, panel, texto):
+        from spotify_config import REDIRECT_PREDETERMINADO
+        ajustes = tk.Frame(contenedor, bg=fondo)
+        ajustes.grid(row=0, column=0, sticky="nsew")
+        ajustes.columnconfigure(0, weight=1)
+        self._vistas["Ajustes"] = ajustes
+        tk.Label(ajustes, text="Ajustes", bg=fondo, fg=texto,
+                 font=("Segoe UI", 23, "bold")).grid(sticky="w", pady=(0, 18))
+        tarjeta = tk.Frame(ajustes, bg=panel, padx=20, pady=20)
+        tarjeta.grid(sticky="new")
+        tarjeta.columnconfigure(0, weight=1)
+        tk.Label(tarjeta, text="Spotify", bg=panel, fg=texto,
+                 font=("Segoe UI", 17, "bold")).grid(sticky="w")
+        self._estado_spotify = tk.Label(tarjeta, text="● NO CONFIGURADO", bg=panel,
+                                        fg=texto, font=("Segoe UI", 11, "bold"))
+        self._estado_spotify.grid(sticky="w", pady=(16, 6))
+        self._mensaje_spotify = tk.Label(tarjeta, bg=panel, fg="#b9c4d8",
+                                         wraplength=490, justify="left")
+        self._mensaje_spotify.grid(sticky="w", pady=(0, 14))
+        self._campos_spotify = []
+        for etiqueta, valor in (("Client ID", ""), ("Redirect URI", REDIRECT_PREDETERMINADO)):
+            tk.Label(tarjeta, text=etiqueta, bg=panel, fg=texto).grid(sticky="w", pady=(8, 4))
+            campo = tk.Entry(tarjeta, bg="#0e1522", fg=texto, insertbackground=texto,
+                             font=("Segoe UI", 11))
+            campo.insert(0, valor)
+            campo.grid(sticky="ew", ipady=7)
+            self._campos_spotify.append(campo)
+        tk.Label(tarjeta, text="Registra este Redirect URI en tu aplicación de Spotify.\n"
+                 "Guarda los cambios antes de conectar. No se necesita Client Secret.",
+                 bg=panel, fg="#b9c4d8", justify="left").grid(sticky="w", pady=14)
+        self._botones_spotify = []
+        for accion in ("Guardar configuración", "Conectar Spotify", "Desconectar Spotify"):
+            boton = self._crear_boton(tarjeta, accion,
+                                     lambda nombre=accion: self._accion_spotify(nombre), "#6853ba")
+            boton.grid(sticky="ew", pady=4)
+            boton.configure(state="disabled")
+            self._botones_spotify.append(boton)
+        self._spotify_callbacks = None
+        self._spotify_trabajando = False
+        self._configuracion_mostrada = None
+
+    def configurar_spotify(self, consultar, guardar, conectar, desconectar):
+        self._spotify_callbacks = (consultar, guardar, conectar, desconectar)
+        self._refrescar_spotify()
+
+    def _mostrar_vista(self, nombre):
+        self._vistas[nombre].tkraise()
+        for vista, item in self._navegacion.items():
+            activa = vista == nombre
+            fondo = "#282943" if activa else "#111725"
+            item.configure(bg=fondo, highlightbackground="#55517d" if activa else fondo)
+            titulo, subtitulo = item.winfo_children()
+            titulo.configure(text=("▎  " if activa else "   ") + vista, bg=fondo)
+            subtitulo.configure(text="ACTIVA" if activa else "Abrir", bg=fondo)
+        if nombre == "Ajustes" and self._spotify_callbacks:
+            self._actualizar_spotify()
+
+    def _refrescar_spotify(self):
+        if self._cerrando.is_set():
+            return
+        self._actualizar_spotify()
+        self.ventana.after(300, self._refrescar_spotify)
+
+    def _actualizar_spotify(self):
+        estado = self._spotify_callbacks[0]()
+        nombre = estado["estado"]
+        colores = {"conectado": "#62d6a8", "error": "#ff9292", "conectando": "#f5c76b"}
+        self._estado_spotify.configure(text="● " + nombre.replace("_", " ").upper(),
+                                        fg=colores.get(nombre, "#b9c4d8"))
+        if not self._spotify_trabajando:
+            self._mensaje_spotify.configure(text=estado["mensaje"])
+        configuracion = estado["configuracion"]
+        if configuracion and configuracion != self._configuracion_mostrada:
+            for campo, clave in zip(self._campos_spotify, ("client_id", "redirect_uri")):
+                campo.delete(0, tk.END)
+                campo.insert(0, configuracion[clave])
+            self._configuracion_mostrada = dict(configuracion)
+        for indice, boton in enumerate(self._botones_spotify):
+            deshabilitado = self._spotify_trabajando or (indice == 1 and (estado["ocupado"] or not configuracion))
+            boton.configure(state="disabled" if deshabilitado else "normal")
+
+    def _accion_spotify(self, nombre):
+        if self._spotify_trabajando or not self._spotify_callbacks:
+            return
+        indice = ("Guardar configuración", "Conectar Spotify", "Desconectar Spotify").index(nombre) + 1
+        argumentos = tuple(campo.get() for campo in self._campos_spotify) if indice == 1 else ()
+        if indice == 2:
+            actual = self._spotify_callbacks[0]()["configuracion"]
+            if not actual or any(campo.get().strip() != actual[clave] for campo, clave in
+                                 zip(self._campos_spotify, ("client_id", "redirect_uri"))):
+                messagebox.showinfo("Spotify", "Guarda los cambios antes de conectar.")
+                return
+        self._spotify_trabajando = True
+        self._actualizar_spotify()
+        self._mensaje_spotify.configure(text="Conectando: autoriza en el navegador (máximo 120 segundos)."
+                                         if indice == 2 else "Procesando…")
+        def trabajar():
+            try:
+                resultado = self._spotify_callbacks[indice](*argumentos)
+            except Exception:
+                resultado = {"exito": False, "mensaje": "No se pudo completar la operación."}
+            self._programar(self._terminar_spotify, resultado)
+        threading.Thread(target=trabajar, daemon=True).start()
+
+    def _terminar_spotify(self, resultado):
+        self._spotify_trabajando = False
+        self._actualizar_spotify()
+        if not resultado.get("exito"):
+            messagebox.showinfo("Spotify", resultado["mensaje"])
 
     def _crear_boton(self, padre, texto, comando, color):
         boton = tk.Button(padre, text=texto, command=comando, font=("Segoe UI", 10, "bold"),
