@@ -34,6 +34,10 @@ from datetime import datetime, timedelta
 
 from spotify_control import (
     inicializar_spotify,
+    consultar_estado,
+    guardar_configuracion,
+    conectar_spotify,
+    desconectar_spotify,
     spotify_disponible,
     reproducir_cancion,
     pausar_musica,
@@ -250,6 +254,9 @@ def guardar_preferencias(preferencias):
 preferencias = cargar_preferencias()
 
 interfaz = InterfazEVA()
+interfaz.configurar_spotify(
+    consultar_estado, guardar_configuracion, conectar_spotify, desconectar_spotify
+)
 
 # Spotify se comprueba sin bloquear la interfaz ni las demás funciones.
 threading.Thread(target=inicializar_spotify, daemon=True).start()
@@ -514,6 +521,10 @@ def buscar_internet(busqueda):
 # ==================================================
 # PROCESAR COMANDOS
 # ==================================================
+
+# El procesador consulta esta tabla antes de evaluar cualquier comando.
+respuestas_broma = {}
+
 
 def procesar_comando(comando):
 

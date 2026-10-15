@@ -14,7 +14,7 @@ MENSAJE_NO_DISPONIBLE = "Spotify no está configurado en este equipo."
 
 
 def spotify_disponible():
-    return estado_spotify == "disponible" and spotify is not None
+    return estado_spotify == "conectado" and spotify is not None
 
 
 def _fallo(mensaje=MENSAJE_NO_DISPONIBLE):
@@ -29,92 +29,232 @@ def _registrar_error(error):
         return _fallo("No pude completar la operación en Spotify. Comprueba la reproducción y el dispositivo.")
     sesion_rechazada = (codigo == 401 or
                        getattr(error, "error", None) in ("invalid_grant", "invalid_client"))
-    estado_spotify = "no_autenticado" if sesion_rechazada else "error"
+    _estado("error", "La sesión fue rechazada. Conecta de nuevo." if sesion_rechazada else "Spotify no está disponible temporalmente.")
     motivo_spotify = "sesion_rechazada" if sesion_rechazada else "servicio_no_disponible"
     return _fallo()
 
 
-def inicializar_spotify():
-    """Valida una sesión existente sin navegador, consola ni escrituras de caché.
+# Cada cambio invalida resultados pendientes de operaciones anteriores.
+_configuracion = None
+_revision = 0
+_conexion_activa = False
+_mensaje = "Spotify no configurado."
 
-    Puede llamarse de nuevo para reintentar después de recuperar la conexión.
-    """
-    global spotify, estado_spotify, motivo_spotify
+
+def consultar_estado():
+    # Consulta sin espera: una operación de reproducción puede tener el lock.
+    configuracion = _configuracion
+    return {"estado": estado_spotify, "mensaje": _mensaje,
+            "disponible": spotify_disponible(),
+            "configuracion": dict(configuracion) if configuracion else None,
+            "ocupado": _conexion_activa}
+
+
+def _estado(estado, mensaje):
+    global estado_spotify, _mensaje
+    estado_spotify = estado
+    _mensaje = mensaje
+
+
+def guardar_configuracion(client_id, redirect_uri):
+    global _configuracion, _revision, spotify
+    from spotify_config import guardar
     with _bloqueo:
-        spotify = None
-        estado_spotify = "comprobando"
-        motivo_spotify = "comprobando"
         try:
-            import config
-            client_id = getattr(config, "SPOTIFY_CLIENT_ID", None)
-            redirect_uri = getattr(config, "SPOTIFY_REDIRECT_URI", None)
-            if (not isinstance(client_id, str)
-                    or not re.fullmatch(r"[0-9a-fA-F]{32}", client_id.strip())
-                    or not isinstance(redirect_uri, str)
-                    or not redirect_uri.startswith(("http://", "https://"))):
-                estado_spotify = "no_configurado"
-                motivo_spotify = "configuracion_incompleta"
-                return _fallo()
-        except Exception:
-            estado_spotify = "no_configurado"
-            motivo_spotify = "configuracion_no_disponible"
-            return _fallo()
-        try:
-            # Spotipy puede registrar cuerpos de solicitudes con tokens en DEBUG.
-            # EVA conserva únicamente las categorías de diagnóstico anteriores.
-            for nombre in ("spotipy", "spotipy.client", "spotipy.oauth2",
-                           "spotipy.cache_handler"):
-                logging.getLogger(nombre).disabled = True
-            import spotipy
-            from spotipy.oauth2 import SpotifyPKCE
-            from spotipy.cache_handler import CacheFileHandler, MemoryCacheHandler
-        except Exception:
-            estado_spotify = "no_configurado"
-            motivo_spotify = "dependencia_no_disponible"
-            return _fallo()
-        try:
-            class SesionExistente(SpotifyPKCE):
-                def get_access_token(self, code=None, check_cache=True):
-                    token = self.validate_token(self.cache_handler.get_cached_token())
-                    if not token or not token.get("access_token"):
-                        raise ValueError("Sesion Spotify no disponible")
-                    return token["access_token"]
-
-            # Leer la caché existente sin alterarla; renovar solo en memoria.
-            cache = MemoryCacheHandler(CacheFileHandler().get_cached_token())
-            autenticacion = SesionExistente(
-                client_id=client_id.strip(), redirect_uri=redirect_uri,
-                scope=SCOPES, open_browser=False, cache_handler=cache,
-                requests_timeout=5
-            )
-            if not cache.get_cached_token():
-                estado_spotify = "no_autenticado"
-                motivo_spotify = "sin_sesion"
-                return _fallo()
-            token = autenticacion.validate_token(cache.get_cached_token())
-            if not token or not token.get("access_token"):
-                estado_spotify = "no_autenticado"
-                motivo_spotify = "sesion_no_utilizable"
-                return _fallo()
-            cliente = spotipy.Spotify(
-                auth_manager=autenticacion, requests_timeout=5,
-                retries=0, status_retries=0
-            )
-            cliente.devices()  # Una lista vacía no significa fallo de la API.
-            spotify = cliente
-            estado_spotify = "disponible"
-            motivo_spotify = "sesion_validada"
+            nueva = guardar(client_id, redirect_uri)
+            if nueva != _configuracion:
+                _revision += 1
+                spotify = None
+            _configuracion = nueva
+            if not spotify_disponible():
+                _estado("configurado", "Configurado · pendiente de conectar")
             return {"exito": True}
-        except Exception as error:
-            if getattr(error, "error", None) in ("invalid_grant", "invalid_client"):
-                estado_spotify = "no_autenticado"
-                motivo_spotify = "sesion_rechazada"
-            else:
-                _registrar_error(error)
-                if estado_spotify == "comprobando":
-                    estado_spotify = "error"
-                    motivo_spotify = "comprobacion_fallida"
-            return _fallo()
+        except ValueError as error:
+            return _fallo(str(error))
+
+
+def _autenticacion(configuracion, cache):
+    # Nunca permitir que Spotipy solicite autorización desde un comando.
+    for nombre in ("spotipy", "spotipy.client", "spotipy.oauth2", "spotipy.cache_handler"):
+        logging.getLogger(nombre).disabled = True
+    from spotipy.oauth2 import SpotifyPKCE
+
+    class SesionExistente(SpotifyPKCE):
+        def get_access_token(self, code=None, check_cache=True):
+            if code is not None:
+                return super().get_access_token(code=code, check_cache=False)
+            token = self.validate_token(self.cache_handler.get_cached_token())
+            if not token or not token.get("access_token"):
+                raise ValueError("Sesión no disponible")
+            return token["access_token"]
+
+    return SesionExistente(**configuracion, scope=SCOPES, open_browser=False,
+                          cache_handler=cache, requests_timeout=5)
+
+
+def _cliente(auth):
+    import spotipy
+    cliente = spotipy.Spotify(auth_manager=auth, requests_timeout=5,
+                              retries=0, status_retries=0)
+    cliente.devices()
+    return cliente
+
+
+def inicializar_spotify():
+    """Restaura una sesión sin navegador, sin bloquear el hilo gráfico."""
+    global _configuracion, spotify
+    from spotify_config import cargar, carpeta_local
+    with _bloqueo:
+        revision = _revision
+    try:
+        try:
+            configuracion = cargar()
+        except ValueError as error:
+            with _bloqueo:
+                if revision == _revision:
+                    _estado("error", str(error))
+            return
+        with _bloqueo:
+            if revision != _revision:
+                return
+            _configuracion = configuracion
+            if not configuracion:
+                _estado("no_configurado", "Spotify no configurado.")
+                return
+            _estado("configurado", "Configurado · pendiente de conectar")
+        for nombre in ("spotipy", "spotipy.client", "spotipy.oauth2", "spotipy.cache_handler"):
+            logging.getLogger(nombre).disabled = True
+        from spotify_sesion import SesionProtegida
+        from spotipy.cache_handler import MemoryCacheHandler, CacheFileHandler
+        # Trabajar en memoria hasta comprobar que el resultado sigue vigente.
+        persistencia = SesionProtegida(configuracion)
+        token = persistencia.get_cached_token()
+        if (not token and not (carpeta_local() / "spotify_sesion_local").exists()
+                and not (carpeta_local() / "spotify.json").exists()):
+            token = CacheFileHandler().get_cached_token()  # Solo lectura heredada.
+        if not token:
+            return
+        cache = MemoryCacheHandler(token)
+        auth = _autenticacion(configuracion, cache)
+        cliente = _cliente(auth)
+        with _bloqueo:
+            if revision == _revision:
+                # Las sesiones heredadas se conservan solo en memoria.
+                if persistencia.ruta.exists():
+                    persistencia.save_token_to_cache(cache.get_cached_token())
+                    auth.cache_handler = persistencia
+                spotify = cliente
+                _estado("conectado", "Conectado")
+    except Exception:
+        with _bloqueo:
+            if revision == _revision:
+                _estado("error", "No se pudo recuperar Spotify. Revisa la configuración o conecta de nuevo.")
+
+
+def conectar_spotify():
+    """Única entrada de autorización interactiva; llamar desde un trabajador."""
+    global _conexion_activa, _revision, spotify
+    with _bloqueo:
+        if _conexion_activa:
+            return _fallo("Ya hay una conexión en curso.")
+        if not _configuracion:
+            return _fallo("Guarda primero la configuración de Spotify.")
+        _conexion_activa = True
+        _revision += 1
+        revision = _revision
+        configuracion = dict(_configuracion)
+        spotify = None
+        _estado("conectando", "Autoriza Spotify en el navegador. Espera máxima: 120 segundos.")
+    try:
+        import secrets
+        import webbrowser
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        from urllib.parse import urlsplit, parse_qs
+        from spotipy.cache_handler import MemoryCacheHandler
+        from spotify_sesion import SesionProtegida
+        from spotify_config import carpeta_local, escribir_atomico
+        state = secrets.token_urlsafe(32)
+        resultado = {}
+        uri = urlsplit(configuracion["redirect_uri"])
+
+        class Callback(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                recibido = urlsplit(self.path)
+                parametros = parse_qs(recibido.query)
+                valido = (recibido.path == uri.path and
+                          secrets.compare_digest(parametros.get("state", [""])[0], state))
+                if valido:
+                    resultado.update(parametros)
+                self.send_response(200 if valido else 400)
+                self.end_headers()
+                self.wfile.write(b"Puedes volver a EVA." if valido else b"Callback no valido.")
+
+        class ServidorCallback(HTTPServer):
+            def get_request(self):
+                conexion, direccion = super().get_request()
+                conexion.settimeout(2)
+                return conexion, direccion
+
+            def handle_error(self, request, client_address):
+                # No registrar URLs de callback ni detalles de solicitudes.
+                pass
+
+        cache = MemoryCacheHandler()
+        auth = _autenticacion(configuracion, cache)
+        with ServidorCallback(("127.0.0.1", uri.port), Callback) as servidor:
+            servidor.timeout = 0.5
+            if not webbrowser.open(auth.get_authorize_url(state=state)):
+                raise ValueError("No se pudo abrir el navegador.")
+            limite = time.monotonic() + 120
+            while not resultado and time.monotonic() < limite:
+                with _bloqueo:
+                    if revision != _revision:
+                        return _fallo("La conexión fue cancelada por un cambio de configuración.")
+                servidor.handle_request()
+        if "error" in resultado:
+            raise ValueError("Autorización rechazada o cancelada.")
+        codigo = resultado.get("code", [None])[0]
+        if not codigo:
+            raise ValueError("No se recibió una autorización válida a tiempo.")
+        auth.get_access_token(code=codigo, check_cache=False)
+        cliente = _cliente(auth)
+        with _bloqueo:
+            if revision != _revision:
+                return _fallo("La configuración cambió; conecta de nuevo.")
+            persistencia = SesionProtegida(configuracion)
+            persistencia.save_token_to_cache(cache.get_cached_token())
+            escribir_atomico(carpeta_local() / "spotify_sesion_local", b"1")
+            auth.cache_handler = persistencia
+            spotify = cliente
+            _estado("conectado", "Conectado")
+        return {"exito": True}
+    except Exception:
+        with _bloqueo:
+            if revision == _revision:
+                _estado("error", "No se pudo conectar. Revisa internet, el Redirect URI y el puerto; autoriza antes de 120 segundos.")
+        return _fallo("No se pudo conectar con Spotify. Puedes intentarlo de nuevo.")
+    finally:
+        with _bloqueo:
+            _conexion_activa = False
+
+
+def desconectar_spotify():
+    global spotify, _revision
+    with _bloqueo:
+        _revision += 1
+        spotify = None
+        try:
+            from spotify_sesion import borrar
+            borrar()
+            _estado("configurado" if _configuracion else "no_configurado",
+                    "Configurado · pendiente de conectar" if _configuracion else "Spotify no configurado.")
+            return {"exito": True}
+        except Exception:
+            _estado("error", "Sesión desactivada, pero no se pudo borrar del disco. Intenta desconectar otra vez.")
+            return _fallo("No se pudo eliminar la sesión local.")
 
 
 def _operacion_segura(funcion=None, *, consulta=False):

@@ -1,7 +1,7 @@
-# Spotify es opcional: EVA funciona aunque no exista config.py.
-# Esta plantilla no activa Spotify por sí sola.
-# Se necesita un Client ID válido y una sesión previamente autenticada.
-# EVA no abre el navegador ni solicita iniciar sesión automáticamente.
+# Spotify es opcional: EVA funciona sin config.py.
+# Método recomendado: Ajustes → Spotify, dentro de EVA.
+# config.py sigue siendo compatible con instalaciones anteriores.
+# La autorización se inicia Únicamente al pulsar Conectar Spotify.
 
 SPOTIFY_CLIENT_ID = "TU_CLIENT_ID"
 
