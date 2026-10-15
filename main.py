@@ -8,7 +8,10 @@ import threading
 import re
 
 from interfaz import InterfazEVA
-from gemini_control import preguntar_gemini
+from gemini_control import (
+    preguntar_gemini, consultar_estado_gemini, guardar_configuracion_gemini,
+    probar_conexion_gemini, desconectar_gemini, recargar_gemini,
+)
 from urllib.parse import quote
 from alarmas import (
     crear_alarma,
@@ -255,6 +258,11 @@ def guardar_preferencias(preferencias):
 preferencias = cargar_preferencias()
 
 interfaz = InterfazEVA()
+interfaz.configurar_gemini(
+    consultar_estado_gemini, guardar_configuracion_gemini,
+    probar_conexion_gemini, desconectar_gemini,
+)
+threading.Thread(target=recargar_gemini, daemon=True).start()
 interfaz.configurar_spotify(
     consultar_estado, guardar_configuracion, conectar_spotify, desconectar_spotify
 )
