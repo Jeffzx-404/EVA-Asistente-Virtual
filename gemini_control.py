@@ -1,6 +1,7 @@
 """Fallback de texto opcional. No ejecuta acciones ni conserva conversaciones."""
 import threading
 import time
+import re
 
 MODELO_GEMINI = "gemini-3.6-flash"
 NO_CONFIGURADO = "Gemini no está configurado en este equipo."
@@ -20,6 +21,59 @@ _revision = 0
 _estado = "no_configurado"
 _mensaje = NO_CONFIGURADO
 _origen = ""
+
+
+def _diagnosticar_429(error, clave_usada=""):
+    """Registrar solo campos de cuota; nunca volcar mensajes o cuerpos completos."""
+    try:
+        datos = getattr(error, "details", {})
+        if not isinstance(datos, dict):
+            datos = {}
+        datos = datos.get("error", datos)
+        if not isinstance(datos, dict):
+            datos = {}
+        # Reconstruir el mensaje evita revelar secretos incluidos en texto libre.
+        texto = str(getattr(error, "message", "")).casefold()
+        mensaje = "Cuota agotada o limite de solicitudes alcanzado."
+        if "per day" in texto or "perday" in texto:
+            mensaje = "Limite diario de solicitudes alcanzado."
+        elif "per minute" in texto or "perminute" in texto:
+            mensaje = "Limite de solicitudes por minuto alcanzado."
+        print("Gemini HTTP: 429")
+        nombre_tipo = type(error).__name__
+        print("Tipo de error:", nombre_tipo if re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]{0,79}", nombre_tipo) else "Error")
+        print("Mensaje de cuota:", mensaje)
+        detalles = datos.get("details", [])
+        if not isinstance(detalles, list):
+            detalles = []
+        for entrada in detalles:
+            if not isinstance(entrada, dict):
+                continue
+            if entrada.get("@type") == "type.googleapis.com/google.rpc.RetryInfo":
+                demora = entrada.get("retryDelay")
+                if isinstance(demora, str) and re.fullmatch(r"[0-9]{1,8}(?:\.[0-9]{1,9})?s", demora):
+                    print("retry_after:", demora)
+            if entrada.get("@type") == "type.googleapis.com/google.rpc.QuotaFailure":
+                violaciones = entrada.get("violations", [])
+                if not isinstance(violaciones, list):
+                    continue
+                for violacion in violaciones:
+                    if not isinstance(violacion, dict):
+                        continue
+                    for campo in ("quotaId", "quotaMetric"):
+                        valor = violacion.get(campo)
+                        if (isinstance(valor, str) and re.fullmatch(r"[A-Za-z0-9_./-]{1,200}", valor)
+                                and not any(secreto and secreto in valor for secreto in (clave_usada, _clave))
+                                and "AIza" not in valor):
+                            print("Cuota/limite:", valor)
+        respuesta = getattr(error, "response", None)
+        cabeceras = getattr(respuesta, "headers", {})
+        demora = cabeceras.get("retry-after") if cabeceras else None
+        if isinstance(demora, str) and re.fullmatch(r"[0-9]{1,8}", demora):
+            print("retry_after:", demora, "segundos")
+    except Exception:
+        # El diagnostico nunca debe impedir el cooldown ni mostrar excepciones.
+        pass
 
 
 def consultar_estado_gemini():
@@ -169,6 +223,7 @@ def preguntar_gemini(texto, *, _prueba=False):
         detalle = str(error).casefold()
         if str(codigo) == "429" or estado == "RESOURCE_EXHAUSTED":
             _ultimo_429 = time.monotonic()
+            _diagnosticar_429(error, clave)
             mensaje = LIMITE_USO
         elif (str(codigo) == "503" or estado == "UNAVAILABLE"
                 or any(marca in detalle for marca in
