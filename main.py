@@ -8,6 +8,7 @@ import threading
 import re
 
 from interfaz import InterfazEVA
+from gemini_control import preguntar_gemini
 from urllib.parse import quote
 from alarmas import (
     crear_alarma,
@@ -165,7 +166,7 @@ def escuchar():
             comando
 )
 
-        return comando.lower()
+        return comando
 
 
 
@@ -527,6 +528,8 @@ respuestas_broma = {}
 
 
 def procesar_comando(comando):
+    pregunta_original = comando.strip()
+    comando = comando.lower()
 
     # Permite decir:
     # "EVA abre Spotify"
@@ -2079,7 +2082,7 @@ def procesar_comando(comando):
     else:
 
         hablar(
-            "Todavía no conozco ese comando."
+            preguntar_gemini(pregunta_original)
         )
 
 
@@ -2089,8 +2092,6 @@ def procesar_comando(comando):
 def procesar_desde_interfaz(
     comando
 ):
-
-    comando = comando.lower()
 
     procesar_comando(
         comando
