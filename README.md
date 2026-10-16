@@ -1,477 +1,648 @@
-# 🤖 EVA - Asistente Virtual Personalizado
+# EVA - Asistente Virtual Personalizado
 
-EVA es un asistente virtual desarrollado en **Python** capaz de interactuar con el usuario mediante comandos de voz y texto.
+EVA es un asistente virtual desarrollado en Python como proyecto académico. Su objetivo es permitir que el usuario interactúe con su computadora mediante voz y una interfaz gráfica, ejecutando tareas comunes, respondiendo preguntas y utilizando servicios externos de forma opcional.
 
-Este proyecto fue desarrollado como parte del curso de Fundamentos de Programación.
+---
 
-## 🧑‍💻 Integrantes
-
-- Bob el constructor
-- Angel K-Brito
-- Junior el que le gusta la Coca-Cola
-- Jose le gustan las malcriadas
-- Rudy vive en la chacra
-
-
-## 🚀 Funciones actuales
+## Estado actual
 
 Actualmente EVA puede:
 
-- 🎤 Reconocer comandos de voz.
-- 🔊 Responder mediante voz.
-- 💬 Recibir comandos desde una interfaz gráfica.
-- 💻 Abrir y cerrar aplicaciones de Windows.
-- 🌐 Realizar búsquedas en Internet.
-- 🌐 Abrir páginas web.
-- 🎵 Buscar canciones en Spotify.
-- ▶️ Reproducir canciones en Spotify.
-- ⏸️ Pausar y continuar la música.
-- ⏭️ Cambiar de canción.
-- 🔊 Controlar el volumen de Spotify.
-- ❤️ Guardar la canción favorita del usuario.
-- 🔔 Crear alarmas.
-- ⏱️ Crear alarmas relativas, por ejemplo: "en 5 minutos".
-- 🛑 Detener alarmas mediante comandos.
-- 📝 Crear recordatorios.
-- 📋 Consultar recordatorios pendientes.
-- 🗑️ Eliminar recordatorios.
-- 🧠 Guardar preferencias del usuario.
-- 🕐 Informar la hora.
-- 📅 Informar la fecha.
-- 👋 Reconocer diferentes saludos y despedidas.
+- Escuchar comandos por voz.
+- Responder por voz usando `pyttsx3`.
+- Mostrar la conversación en una interfaz gráfica.
+- Abrir y cerrar aplicaciones.
+- Controlar Spotify.
+- Crear y detener alarmas.
+- Crear y gestionar recordatorios.
+- Decir la hora y la fecha.
+- Realizar búsquedas en Internet.
+- Responder preguntas generales mediante Gemini.
+- Guardar preferencias de forma local.
+- Seguir funcionando aunque Spotify o Gemini no estén configurados.
+
+La prioridad del proyecto es que las funciones principales de EVA no dependan completamente de servicios externos.
 
 ---
 
-## 🛠️ Tecnologías utilizadas
+# Funciones principales
 
-El proyecto utiliza principalmente:
+## 1. Reconocimiento de voz
 
-- Python
-- Tkinter
-- SpeechRecognition
-- PyAudio
-- pyttsx3
-- Spotipy
-- Spotify Web API
-- JSON
-- Threading
-- Webbrowser
+EVA utiliza:
+
+- `SpeechRecognition`
+- `PyAudio`
+
+para capturar el audio del micrófono y convertirlo en texto.
+
+Actualmente el reconocimiento se realiza mediante:
+
+```python
+recognize_google(audio, language="es-PE")
+```
+
+Esto permite que EVA reconozca comandos hablados en español.
+
+Ejemplos:
+
+```text
+Eva, abre la calculadora
+Eva, ¿qué hora es?
+Eva, abre Spotify
+Eva, busca inteligencia artificial
+```
+
+> El reconocimiento de voz actual requiere conexión a Internet.
 
 ---
 
-## 📂 Estructura del proyecto
+## 2. Respuesta por voz
+
+EVA responde utilizando:
+
+```text
+pyttsx3
+```
+
+La voz se reproduce de forma local en Windows.
+
+Características actuales:
+
+- No necesita una API externa.
+- No consume créditos.
+- Funciona sin conexión a Internet una vez generada la respuesta.
+- Utiliza un bloqueo de voz para evitar que dos respuestas se reproduzcan al mismo tiempo.
+- Actualiza el estado visual `HABLANDO` mientras reproduce audio.
+
+Se probó una integración con ElevenLabs, pero actualmente **no forma parte del proyecto**.
+
+---
+
+## 3. Interfaz gráfica
+
+EVA cuenta con una interfaz desarrollada con `Tkinter`.
+
+La interfaz permite visualizar la conversación entre EVA y el usuario.
+
+Estados principales:
+
+```text
+LISTA
+ESCUCHANDO
+PROCESANDO
+HABLANDO
+```
+
+La conversación se muestra mediante tarjetas o burbujas:
+
+- EVA aparece en un lado.
+- El usuario aparece en el lado contrario.
+
+La aplicación utiliza hilos de trabajo y una cola para evitar bloquear la ventana durante tareas como:
+
+- escuchar el micrófono;
+- procesar comandos;
+- consultar servicios externos;
+- reproducir voz.
+
+---
+
+## 4. Control de aplicaciones
+
+EVA puede abrir y cerrar varias aplicaciones de Windows mediante comandos de voz.
+
+Aplicaciones compatibles actualmente:
+
+- Calculadora
+- Bloc de notas
+- Paint
+- Explorador de archivos
+- Google Chrome
+- Spotify
+
+Ejemplos:
+
+```text
+Eva, abre la calculadora
+Eva, abre Paint
+Eva, abre Chrome
+Eva, cierra Chrome
+Eva, abre Spotify
+```
+
+Algunas aplicaciones del sistema requieren un tratamiento especial para evitar cerrar componentes importantes de Windows.
+
+---
+
+## 5. Spotify
+
+EVA puede controlar Spotify cuando el usuario configura su propia cuenta.
+
+Funciones implementadas:
+
+- Abrir Spotify.
+- Detectar dispositivos disponibles.
+- Reproducir canciones por nombre.
+- Buscar canciones por artista.
+- Reanudar la reproducción.
+- Pasar a la siguiente canción.
+- Agregar canciones a la cola.
+- Seleccionar un dispositivo disponible.
+
+Ejemplos:
+
+```text
+Eva, reproduce Numb
+Eva, reproduce In the End de Linkin Park
+Eva, siguiente canción
+Eva, continúa la música
+```
+
+### Spotify es opcional
+
+Si Spotify no está configurado, EVA sigue funcionando normalmente.
+
+La configuración se mantiene fuera del repositorio para evitar exponer datos sensibles.
+
+---
+
+## 6. Ajustes de Spotify
+
+La interfaz incluye una sección de configuración de Spotify.
+
+Permite:
+
+- ingresar el Client ID;
+- configurar el Redirect URI;
+- guardar la configuración;
+- conectar Spotify;
+- desconectar Spotify;
+- ver el estado de conexión.
+
+La configuración local se almacena en Windows fuera del repositorio, utilizando una ruta similar a:
+
+```text
+%LOCALAPPDATA%\EVA\
+```
+
+Las sesiones sensibles se mantienen separadas de los archivos públicos del proyecto.
+
+---
+
+## 7. Gemini
+
+EVA puede utilizar Gemini como sistema opcional para responder preguntas generales.
+
+Gemini se utiliza como último recurso, después de comprobar si el usuario pidió una función local.
+
+Flujo general:
+
+```text
+Comando del usuario
+        ↓
+¿Es una función local de EVA?
+        ↓
+Sí → Ejecutar función local
+No  → Consultar Gemini
+```
+
+Esto evita que Gemini interfiera con funciones como:
+
+- abrir aplicaciones;
+- Spotify;
+- alarmas;
+- recordatorios;
+- búsquedas;
+- fecha y hora.
+
+### Gemini es opcional
+
+Si Gemini:
+
+- no está configurado;
+- no tiene API key;
+- alcanza su cuota;
+- falla;
+- no tiene conexión;
+
+EVA continúa funcionando con sus funciones locales.
+
+---
+
+## 8. Configuración de Gemini
+
+Gemini puede configurarse desde la interfaz de Ajustes.
+
+La API key:
+
+- no se guarda directamente en el código;
+- no debe subirse a GitHub;
+- se almacena localmente;
+- puede protegerse mediante Windows DPAPI.
+
+La sección de Ajustes permite:
+
+- guardar la API key;
+- probar la conexión;
+- desconectar Gemini;
+- visualizar su estado.
+
+---
+
+## 9. Manejo de errores y cuota de Gemini
+
+EVA puede detectar errores relacionados con límites de uso, por ejemplo:
+
+```text
+HTTP 429
+```
+
+Cuando Gemini alcanza un límite:
+
+- muestra un mensaje seguro;
+- no muestra la API key;
+- no muestra tokens;
+- no bloquea el resto de EVA;
+- evita realizar peticiones repetitivas inmediatamente.
+
+---
+
+## 10. Alarmas
+
+EVA puede crear alarmas mediante comandos de voz.
+
+Ejemplos:
+
+```text
+Eva, pon una alarma a las 3:30 de la tarde
+Eva, pon una alarma a las 7 de la mañana
+```
+
+Características:
+
+- funcionan en segundo plano;
+- utilizan sonido de Windows;
+- interpretan horas de mañana, tarde y noche;
+- pueden detenerse mediante comando.
+
+---
+
+## 11. Recordatorios
+
+EVA permite crear recordatorios mediante voz.
+
+Ejemplos:
+
+```text
+Eva, recuérdame estudiar en 10 minutos
+Eva, recuérdame hacer mi tarea dentro de una hora
+```
+
+Los recordatorios se almacenan localmente en:
+
+```text
+recordatorios.json
+```
+
+El archivo se crea automáticamente cuando es necesario.
+
+También se pueden eliminar recordatorios.
+
+---
+
+## 12. Hora y fecha
+
+EVA puede responder preguntas relacionadas con la hora y la fecha.
+
+Ejemplos:
+
+```text
+Eva, ¿qué hora es?
+Eva, dime la fecha
+Eva, ¿qué día es hoy?
+```
+
+---
+
+## 13. Búsquedas en Internet
+
+EVA puede realizar búsquedas utilizando el navegador.
+
+Ejemplo:
+
+```text
+Eva, busca inteligencia artificial
+```
+
+La consulta se abre automáticamente en el navegador predeterminado.
+
+---
+
+## 14. Preferencias
+
+EVA puede almacenar información local del usuario mediante:
+
+```text
+preferencias.json
+```
+
+El archivo se genera automáticamente si no existe.
+
+Esta estructura está preparada para permitir una personalización mayor en futuras versiones.
+
+---
+
+# Arquitectura general
+
+```text
+Usuario
+  ↓
+Micrófono
+  ↓
+SpeechRecognition + PyAudio
+  ↓
+Texto reconocido
+  ↓
+Procesamiento del comando
+  ↓
+┌──────────────────────────────┐
+│ Funciones locales            │
+│                              │
+│ Aplicaciones                 │
+│ Spotify                      │
+│ Alarmas                      │
+│ Recordatorios                │
+│ Hora y fecha                 │
+│ Navegador                    │
+└──────────────────────────────┘
+  ↓
+Si no corresponde a una función local
+  ↓
+Gemini (opcional)
+  ↓
+Respuesta
+  ↓
+Interfaz gráfica
+  ↓
+pyttsx3
+  ↓
+Altavoces
+```
+
+---
+
+# Estructura principal del proyecto
+
+La estructura puede cambiar a medida que EVA evolucione.
 
 ```text
 Proyecto_EVA/
 │
 ├── main.py
 ├── interfaz.py
+│
 ├── spotify_control.py
+├── spotify_config.py
+├── spotify_sesion.py
+│
+├── gemini_control.py
+├── gemini_config.py
+│
 ├── alarmas.py
 ├── recordatorios.py
 ├── tiempo_eva.py
 │
+├── config.py
 ├── config_ejemplo.py
+│
+├── preferencias.json
+├── recordatorios.json
+│
 ├── requirements.txt
 ├── .gitignore
 └── README.md
 ```
 
-### Archivos principales
+---
 
-**main.py**
+# Tecnologías utilizadas
 
-Es el archivo principal de EVA. Procesa los comandos del usuario y conecta las diferentes funciones del asistente.
-
-**interfaz.py**
-
-Contiene la interfaz gráfica desarrollada con Tkinter.
-
-**spotify_control.py**
-
-Contiene las funciones relacionadas con Spotify, como buscar canciones, reproducir música y controlar la reproducción.
-
-**alarmas.py**
-
-Gestiona la creación, reproducción y detención de alarmas.
-
-**recordatorios.py**
-
-Gestiona los recordatorios y su almacenamiento.
-
-**tiempo_eva.py**
-
-Contiene funciones para interpretar horas, fechas y expresiones como:
+## Lenguaje
 
 ```text
-en 5 minutos
-dentro de una hora
-3:30 de la tarde
-mañana
+Python 3.13
 ```
 
-**config_ejemplo.py**
+## Principales librerías y tecnologías
 
-Archivo de ejemplo para configurar Spotify sin publicar las credenciales personales de cada desarrollador.
+- Tkinter
+- SpeechRecognition
+- PyAudio
+- pyttsx3
+- Spotipy
+- Google GenAI
+- threading
+- webbrowser
+- winsound
+- JSON
+- Windows DPAPI
+- Git
+- GitHub
 
 ---
 
-# ⚙️ Instalación
+# Instalación
 
 ## 1. Clonar el repositorio
 
-Primero se debe clonar el proyecto desde GitHub.
-
 ```bash
-git clone URL_DEL_REPOSITORIO
+git clone https://github.com/Jeffzx-404/EVA-Asistente-Virtual.git
 ```
 
-Después entra a la carpeta:
+Entrar en la carpeta:
 
 ```bash
 cd EVA-Asistente-Virtual
 ```
 
-> La URL real del repositorio se colocará aquí cuando el proyecto sea publicado en GitHub.
-
 ---
 
-## 2. Tener Python instalado
+## 2. Crear el entorno virtual
 
-Se recomienda utilizar **Python 3.13** para ejecutar EVA.
-
-Puedes comprobar tu versión con:
-
-```bash
-python --version
-```
-
----
-
-## 3. Crear un entorno virtual
-
-Dentro de la carpeta del proyecto:
-
-```bash
-python -m venv .venv
-```
-
----
-
-## 4. Activar el entorno virtual
-
-### Windows PowerShell
+En Windows:
 
 ```powershell
-.venv\Scripts\Activate.ps1
+py -3.13 -m venv .venv
 ```
 
-Cuando esté activado debería aparecer algo parecido a:
+Activarlo:
 
-```text
-(.venv) PS C:\...\Proyecto_EVA>
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
 ---
 
-## 5. Instalar las dependencias
+## 3. Instalar dependencias
 
-Con el entorno virtual activado:
-
-```bash
-pip install -r requirements.txt
+```powershell
+python -m pip install -r requirements.txt
 ```
-
-Esto instalará las librerías necesarias para ejecutar EVA.
 
 ---
 
-# 🎵 Configuración de Spotify
+## 4. Ejecutar EVA
 
-Para utilizar las funciones de Spotify, cada desarrollador debe utilizar su propia configuración.
-
-El archivo:
-
-```text
-config.py
-```
-
-no está incluido en el repositorio porque puede contener información privada de configuración.
-
-En el proyecto encontrarás:
-
-```text
-config_ejemplo.py
-```
-
-Crea una copia y llámala:
-
-```text
-config.py
-```
-
-Su estructura debe ser:
-
-```python
-SPOTIFY_CLIENT_ID = "TU_CLIENT_ID"
-
-SPOTIFY_REDIRECT_URI = (
-    "http://127.0.0.1:8888/callback"
-)
-```
-
-Cada desarrollador debe colocar su propio Client ID de Spotify.
-
-El Redirect URI utilizado por EVA es:
-
-```text
-http://127.0.0.1:8888/callback
-```
-
-Este mismo Redirect URI debe configurarse en la aplicación correspondiente de Spotify Developer.
-
-> ⚠️ Nunca publiques contraseñas, tokens, archivos de autenticación ni otras credenciales privadas.
-
----
-
-# 🔐 Archivos privados
-
-El proyecto utiliza un archivo `.gitignore` para evitar publicar archivos privados o innecesarios.
-
-Entre ellos se encuentran:
-
-```text
-config.py
-.cache
-.cache-*
-.venv/
-__pycache__/
-preferencias.json
-recordatorios.json
-```
-
-Estos archivos **no deben agregarse manualmente al repositorio**.
-
----
-
-# 🧠 Preferencias y recordatorios
-
-EVA utiliza:
-
-```text
-preferencias.json
-recordatorios.json
-```
-
-para almacenar información local.
-
-Estos archivos no se comparten mediante GitHub.
-
-Si no existen, EVA los crea automáticamente al ejecutarse.
-
-De esta manera, cada desarrollador tendrá sus propias preferencias y recordatorios sin compartir información personal con los demás colaboradores.
-
----
-
-# ▶️ Ejecutar EVA
-
-Después de instalar las dependencias y configurar Spotify, ejecuta:
-
-```bash
+```powershell
 python main.py
 ```
 
-Se abrirá la interfaz de EVA y podrás utilizar comandos mediante texto o voz.
+---
+
+# Configuración de servicios externos
+
+EVA está diseñada para funcionar aunque los servicios externos no estén configurados.
+
+## Spotify
+
+Cada usuario debe utilizar su propia configuración de Spotify.
+
+No deben publicarse:
+
+- tokens;
+- sesiones;
+- Client Secret;
+- credenciales privadas.
+
+## Gemini
+
+Cada usuario debe utilizar su propia API key.
+
+Nunca debe subirse una API key a GitHub.
 
 ---
 
-# 🎤 Ejemplos de comandos
+# Seguridad
 
-Algunos ejemplos de comandos que EVA puede reconocer son:
+Los siguientes datos no deben incluirse en el repositorio:
 
 ```text
-EVA, abre calculadora
-
-EVA, abre Chrome
-
-EVA, abre Spotify
-
-EVA, busca inteligencia artificial en Internet
-
-EVA, reproduce una canción
-
-EVA, pon mi canción favorita
-
-EVA, pausa la música
-
-EVA, siguiente canción
-
-EVA, qué hora es
-
-EVA, qué fecha es hoy
-
-EVA, pon una alarma a las 4 de la tarde
-
-EVA, pon una alarma en 5 minutos
-
-EVA, detener alarma
-
-EVA, recuérdame estudiar en 20 minutos
+API keys
+Client secrets
+Tokens OAuth
+Sesiones
+Contraseñas
+Credenciales
+Archivos privados de configuración
 ```
 
-Los comandos disponibles pueden ampliarse conforme avance el desarrollo.
+El archivo `.gitignore` se utiliza para excluir:
+
+- `.venv/`;
+- cachés;
+- configuraciones locales;
+- archivos temporales;
+- credenciales;
+- sesiones;
+- archivos generados localmente.
 
 ---
 
-# 🤝 Cómo colaborar
+# Control de versiones
 
-Para evitar modificar directamente la versión principal de EVA, se recomienda trabajar utilizando ramas de Git.
+El proyecto utiliza Git y GitHub.
 
-## 1. Actualizar el proyecto
+Flujo de trabajo:
 
-Antes de comenzar a trabajar:
-
-```bash
-git pull
+```text
+main
+ ↓
+rama de desarrollo
+ ↓
+pruebas
+ ↓
+commit
+ ↓
+push
+ ↓
+Pull Request
+ ↓
+merge
 ```
 
----
+También se utilizan etiquetas para conservar versiones estables.
 
-## 2. Crear una nueva rama
+Entre las etiquetas creadas durante el desarrollo se encuentran:
 
-Por ejemplo, si quieres mejorar la interfaz:
-
-```bash
-git checkout -b mejora-interfaz
-```
-
-Otros ejemplos:
-
-```bash
-git checkout -b mejora-spotify
-```
-
-```bash
-git checkout -b nuevos-comandos
-```
-
-```bash
-git checkout -b mejora-recordatorios
+```text
+v1.1-estable
+v1.2-estable
+v1.3-estable
+v1.4-estable
 ```
 
 ---
 
-## 3. Realizar los cambios
+# Objetivo académico
 
-Modifica los archivos necesarios y prueba que EVA siga funcionando correctamente.
+EVA fue desarrollada como proyecto de Fundamentos de Programación.
 
-Después puedes comprobar los cambios con:
+Su objetivo es crear un asistente virtual personalizado capaz de:
 
-```bash
-git status
-```
-
----
-
-## 4. Preparar los cambios
-
-```bash
-git add .
-```
-
----
-
-## 5. Crear un commit
-
-Ejemplo:
-
-```bash
-git commit -m "Mejorar interfaz de EVA"
-```
-
-El mensaje debe explicar brevemente qué se modificó.
+- responder a su nombre;
+- reconocer saludos y despedidas;
+- recibir comandos por voz;
+- abrir y cerrar aplicaciones;
+- reproducir música;
+- crear alarmas;
+- crear recordatorios;
+- realizar búsquedas;
+- responder preguntas;
+- adaptarse gradualmente a las preferencias del usuario.
 
 ---
 
-## 6. Subir la rama
+# Posibles mejoras futuras
 
-```bash
-git push origin nombre-de-la-rama
-```
+Entre las siguientes mejoras planteadas se encuentran:
 
-Por ejemplo:
-
-```bash
-git push origin mejora-interfaz
-```
-
----
-
-## 7. Crear un Pull Request
-
-Después de subir la rama, se puede crear un **Pull Request** en GitHub.
-
-Esto permite:
-
-- Revisar el código.
-- Comentar cambios.
-- Detectar posibles errores.
-- Proponer mejoras.
-- Aprobar los cambios antes de incorporarlos a la versión principal.
+- mejorar la calidad del reconocimiento de voz;
+- mejorar la voz local;
+- ampliar las preferencias del usuario;
+- agregar más aplicaciones compatibles;
+- mejorar la gestión visual de alarmas;
+- mejorar la gestión visual de recordatorios;
+- ampliar la sección de Ajustes;
+- permitir una configuración más sencilla para otros usuarios;
+- preparar una versión instalable de EVA;
+- mejorar la documentación del proyecto.
 
 ---
 
-# ⚠️ Recomendaciones para colaboradores
+# Importante
 
-Antes de enviar cambios:
+EVA es un proyecto educativo.
 
-- Comprobar que EVA inicia correctamente.
-- Probar las funciones modificadas.
-- No publicar credenciales.
-- No publicar archivos `.cache`.
-- No subir el entorno `.venv`.
-- No modificar `.gitignore` sin necesidad.
-- Utilizar mensajes de commit descriptivos.
-- Trabajar en una rama diferente para cada mejora.
+Los servicios externos utilizados pueden tener:
 
----
+- límites de uso;
+- cuotas;
+- cambios de disponibilidad;
+- requisitos propios de cada proveedor.
 
-# 🔮 Próximas mejoras
-
-Algunas funciones que se pueden desarrollar en futuras versiones:
-
-- 🎨 Mejorar la interfaz gráfica.
-- 🎤 Mejorar el reconocimiento de comandos naturales.
-- 📝 Mejorar el sistema de recordatorios.
-- 🔔 Mejorar las alarmas.
-- 🎵 Añadir nuevas funciones de Spotify.
-- 🧠 Mejorar el aprendizaje de preferencias.
-- 🌐 Ampliar las funciones relacionadas con Internet.
-- ⚙️ Mejorar el manejo de errores.
-- 📦 Facilitar la instalación del proyecto.
-- 🔌 Crear nuevas integraciones.
-- 🧩 Organizar EVA utilizando una arquitectura más modular.
+Por esta razón, EVA intenta mantener sus funciones principales disponibles incluso cuando un servicio externo falla o no está configurado.
 
 ---
 
-# 🧑‍💻 Desarrollo
+# Autor
 
-EVA se encuentra actualmente en desarrollo.
+Proyecto desarrollado por **Jeff Gutierrez**.
 
-Las funciones pueden cambiar, mejorarse o ampliarse conforme avance el proyecto.
-
-Las contribuciones mediante ramas y Pull Requests son bienvenidas.
+Proyecto académico de **TECSUP**.
 
 ---
 
-# 📄 Proyecto académico
+# Licencia
 
-EVA fue desarrollado con fines educativos como un proyecto de **Fundamentos de Programación**.
-
-El objetivo es aplicar conceptos de programación mediante la construcción progresiva de un asistente virtual personalizado.
-
----
-
-## 🤖 EVA
-
-**Asistente Virtual Personalizado desarrollado en Python.**
+Proyecto desarrollado con fines educativos.
