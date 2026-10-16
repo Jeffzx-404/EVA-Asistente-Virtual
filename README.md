@@ -635,9 +635,15 @@ Por esta razón, EVA intenta mantener sus funciones principales disponibles incl
 
 ---
 
-# Autor
+# Autores:
 
-Proyecto desarrollado por **Jeff Gutierrez**.
+🧑‍💻 Integrantes
+- Bob El Constructor
+- Angel K-Brito
+- Junior Adicto a la Coca-Cola
+- Jose Decimo Piso
+- Rudy Stickers Turbios
+
 
 Proyecto académico de **TECSUP**.
 
