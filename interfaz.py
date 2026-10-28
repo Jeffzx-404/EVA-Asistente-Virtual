@@ -10,20 +10,22 @@ class InterfazEVA:
     def __init__(self):
         self.funcion_escuchar = None
         self.funcion_comando = None
+        self.funcion_cierre = None
         self._cerrando = threading.Event()
         self._actualizaciones = Queue()
-        self._actividades = {"ESCUCHANDO": 0, "PROCESANDO": 0, "HABLANDO": 0}
+        self._actividades = {"PREPARANDO": 0, "ESCUCHANDO": 0, "PROCESANDO": 0, "HABLANDO": 0}
+        self._ultimo_estado = None
         self._escucha_activa = False
         self._estado_base = "LISTA"
         self._colores_estado = {
             "LISTA": "#62d6a8", "ESCUCHANDO": "#68b5ff",
-            "PROCESANDO": "#f5c76b", "HABLANDO": "#ba9cff",
+            "PROCESANDO": "#f5c76b", "PREPARANDO": "#f5c76b", "HABLANDO": "#ba9cff",
         }
         fondo, panel, texto = "#0d111b", "#151c2b", "#eef2ff"
         self._simbolos_estado = {"LISTA": "✓", "ESCUCHANDO": "◎",
-                                 "PROCESANDO": "◈", "HABLANDO": "≋"}
+                                 "PROCESANDO": "◈", "PREPARANDO": "◈", "HABLANDO": "≋"}
         self._fondos_estado = {"LISTA": "#16372f", "ESCUCHANDO": "#18344e",
-                               "PROCESANDO": "#3b3020", "HABLANDO": "#302747"}
+                               "PROCESANDO": "#3b3020", "PREPARANDO": "#3b3020", "HABLANDO": "#302747"}
         self.ventana = tk.Tk()
         self.ventana.title("EVA - Asistente Virtual")
         self.ventana.geometry("1100x760")
@@ -406,9 +408,36 @@ class InterfazEVA:
         self._temporizador = self.ventana.after(30, self._vaciar_cola)
 
     def _cerrar(self):
+        if self._cerrando.is_set():
+            return
         self._cerrando.set()
         self.ventana.after_cancel(self._temporizador)
-        self.ventana.destroy()
+        self.boton.config(state="disabled")
+        self.boton_enviar.config(state="disabled")
+        if self.funcion_cierre is None:
+            self.ventana.destroy()
+            return
+        # La liberación de Whisper puede esperar a un proceso nativo.
+        # Mantener Tk activo mientras termina, sin llamadas Tk desde el hilo.
+        terminado = threading.Event()
+
+        def liberar():
+            try:
+                self.funcion_cierre()
+            finally:
+                terminado.set()
+
+        def comprobar():
+            if terminado.is_set():
+                self.ventana.destroy()
+            else:
+                self.ventana.after(30, comprobar)
+
+        threading.Thread(target=liberar, name="EVA-cierre").start()
+        comprobar()
+
+    def configurar_cierre(self, funcion):
+        self.funcion_cierre = funcion
 
     def iniciar_actividad(self, estado):
         self._programar(self._cambiar_actividad, estado, 1)
@@ -423,10 +452,13 @@ class InterfazEVA:
 
     def _actualizar_estado(self):
         estado = self._estado_base
-        for candidato in ("HABLANDO", "ESCUCHANDO", "PROCESANDO"):
+        for candidato in ("HABLANDO", "ESCUCHANDO", "PROCESANDO", "PREPARANDO"):
             if self._actividades[candidato]:
                 estado = candidato
                 break
+        if estado == self._ultimo_estado:
+            return
+        self._ultimo_estado = estado
         self.estado.config(text=self._simbolos_estado[estado] + "  " + estado,
                            fg=self._colores_estado[estado], bg=self._fondos_estado[estado])
 

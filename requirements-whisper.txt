@@ -1,0 +1,4 @@
+# Opcional: instalar después de requirements.txt con Python 3.13.
+faster-whisper>=1.2.1,<2.0
+# Faster-Whisper 1.2.1 usa metadata_errors, eliminado en PyAV 19.
+av>=11,<19

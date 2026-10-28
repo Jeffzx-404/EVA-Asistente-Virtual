@@ -6,8 +6,18 @@ import json
 import webbrowser
 import threading
 import re
+import time
 
 from interfaz import InterfazEVA
+from metricas_voz import (
+    marcar_fin_captura, medir_primera_respuesta, medir_etapa, medir_procesamiento,
+    registrar_duracion, limpiar_captura,
+)
+from comandos_voz import preparar_comando, normalizar_intencion, es_consulta_hora, diagnosticar
+from whisper_control import (
+    ControlWhisper, FlujoCancelable, WhisperNoDisponible, USAR_GOOGLE_FALLBACK,
+    configurar_captura,
+)
 from gemini_control import (
     preguntar_gemini, consultar_estado_gemini, guardar_configuracion_gemini,
     probar_conexion_gemini, desconectar_gemini, recargar_gemini,
@@ -63,6 +73,9 @@ bloqueo_voz = threading.Lock()
 # ==================================================
 
 reconocedor = sr.Recognizer()
+configurar_captura(reconocedor)
+# Limitar la espera del fallback de red; no limita la duración de la grabación.
+reconocedor.operation_timeout = 8
 
 bloqueo_voz = threading.Lock()
 
@@ -76,6 +89,7 @@ ARCHIVO_PREFERENCIAS = "preferencias.json"
 
 def hablar(texto):
 
+    medir_primera_respuesta()
     print("EVA:", texto)
 
     interfaz.agregar_mensaje(
@@ -134,64 +148,80 @@ def hablar(texto):
 # EVA ESCUCHA
 # ==================================================
 
-def escuchar():
+def escuchar(al_reconocer=None):
+    """Una captura y una fase PROCESANDO, hasta terminar el comando opcional."""
+    if whisper.cerrado:
+        return ""
+    estado = None
 
-    interfaz.iniciar_actividad("ESCUCHANDO")
+    def cambiar_fase(nuevo):
+        nonlocal estado
+        if estado is not None:
+            interfaz.finalizar_actividad(estado)
+        estado = nuevo
+        if nuevo is not None:
+            interfaz.iniciar_actividad(nuevo)
+
+    limpiar_captura()
     try:
-        with sr.Microphone() as source:
-
-            print("\n🎤 Escuchando...")
-
-            reconocedor.adjust_for_ambient_noise(
-                source,
-                duration=1
-            )
-
-            audio = reconocedor.listen(source)
-    finally:
-        interfaz.finalizar_actividad("ESCUCHANDO")
-
-    interfaz.iniciar_actividad("PROCESANDO")
-    try:
-
-        comando = reconocedor.recognize_google(
-            audio,
-            language="es-PE"
-)
-
-        print(
-            "TÚ:",
-            comando
-)
-
-        interfaz.agregar_mensaje(
-            "TÚ",
-            comando
-)
-
+        cambiar_fase("PREPARANDO")
+        inicio_preparacion = time.perf_counter()
+        try:
+            with whisper.capturar(), sr.Microphone() as source:
+                source.stream = FlujoCancelable(source.stream, lambda: whisper.cerrado)
+                # Este segundo descarta audio: no invitar a hablar todavía.
+                with medir_etapa("calibracion_s"):
+                    reconocedor.adjust_for_ambient_noise(source, duration=1)
+                registrar_duracion("preparacion_microfono_s", time.perf_counter() - inicio_preparacion)
+                if whisper.cerrado:
+                    return ""
+                cambiar_fase("ESCUCHANDO")
+                print("\nEscuchando...")
+                with medir_etapa("captura_listen_s"):
+                    audio = reconocedor.listen(source)
+                    fin_listen = time.perf_counter()
+                    marcar_fin_captura()
+                cambiar_fase("PROCESANDO")
+        except WhisperNoDisponible:
+            return ""
+        if whisper.cerrado:
+            return ""
+        registrar_duracion("listen_a_transcribir_s", time.perf_counter() - fin_listen)
+        try:
+            try:
+                comando = whisper.transcribir(audio)
+            except WhisperNoDisponible as error:
+                if whisper.cerrado:
+                    return ""
+                if not USAR_GOOGLE_FALLBACK:
+                    interfaz.agregar_mensaje("EVA", f"{error} El fallback de Google está desactivado.")
+                    return ""
+                interfaz.agregar_mensaje(
+                    "EVA", f"{error} Intentando Google con la misma grabación; requiere Internet."
+                )
+                with medir_etapa("fallback_google_s"):
+                    comando = reconocedor.recognize_google(audio, language="es-PE")
+        except sr.UnknownValueError:
+            if not whisper.cerrado:
+                hablar("No pude entender lo que dijiste.")
+            return ""
+        except sr.RequestError:
+            if not whisper.cerrado:
+                hablar("No pude conectarme al servicio de reconocimiento de voz.")
+            return ""
+        except Exception:
+            if not whisper.cerrado:
+                interfaz.agregar_mensaje("EVA", "No se pudo reconocer la grabación. Inténtalo de nuevo con Hablar.")
+            return ""
+        if whisper.cerrado:
+            return ""
+        interfaz.agregar_mensaje("TÚ", comando)
+        if comando and al_reconocer is not None:
+            al_reconocer(comando)
         return comando
-
-
-
-    except sr.UnknownValueError:
-
-        hablar(
-            "No pude entender lo que dijiste."
-        )
-
-        return ""
-
-    except sr.RequestError:
-
-        hablar(
-            "No pude conectarme al servicio "
-            "de reconocimiento de voz."
-        )
-
-        return ""
-
     finally:
-        interfaz.finalizar_actividad("PROCESANDO")
+        cambiar_fase(None)
+        limpiar_captura()
 
 
 # ==================================================
@@ -258,6 +288,15 @@ def guardar_preferencias(preferencias):
 preferencias = cargar_preferencias()
 
 interfaz = InterfazEVA()
+whisper = ControlWhisper(
+    informar=lambda texto: interfaz.agregar_mensaje("EVA", texto),
+    actividad=lambda activa: (
+        interfaz.iniciar_actividad("PREPARANDO") if activa
+        else interfaz.finalizar_actividad("PREPARANDO")
+    ),
+)
+interfaz.configurar_cierre(whisper.cerrar)
+interfaz.ventana.after(0, whisper.iniciar)
 interfaz.configurar_gemini(
     consultar_estado_gemini, guardar_configuracion_gemini,
     probar_conexion_gemini, desconectar_gemini,
@@ -537,20 +576,12 @@ respuestas_broma = {}
 
 def procesar_comando(comando):
     pregunta_original = comando.strip()
-    comando = comando.lower()
-
-    # Permite decir:
-    # "EVA abre Spotify"
-    # "EVA reproduce Numb"
-    comando = comando.replace(
-        "eva",
-        ""
-    ).strip()
-
-
-    comando_limpio = comando.lower().strip()
+    comando = preparar_comando(comando)
+    comando_normalizado = normalizar_intencion(comando)
+    comando_limpio = comando
 
     if comando_limpio in respuestas_broma:
+        diagnosticar("intencion", "respuesta_personalizada")
         hablar(respuestas_broma[comando_limpio])
         return
 
@@ -559,14 +590,8 @@ def procesar_comando(comando):
     # HORA
     # ==================================================
 
-    if (
-        "qué hora es" in comando
-        or "que hora es" in comando
-        or "dime la hora" in comando
-        or "dame la hora" in comando
-        or "que horas son" in comando
-        or "qué horas son" in comando
-    ):
+    if es_consulta_hora(comando_normalizado):
+        diagnosticar("intencion", "hora_local")
 
         ahora = datetime.now()
 
@@ -646,9 +671,10 @@ def procesar_comando(comando):
     # ==================================================
 
     elif (
-        "abre la calculadora" in comando
-        or "abrir calculadora" in comando
+        "abre la calculadora" in comando_normalizado
+        or "abrir calculadora" in comando_normalizado
     ):
+        diagnosticar("intencion", "abrir_aplicacion")
 
         abrir_aplicacion(
             "calculadora"
@@ -746,9 +772,10 @@ def procesar_comando(comando):
     # ==================================================
 
     elif (
-        "cierra la calculadora" in comando
-        or "cerrar calculadora" in comando
+        "cierra la calculadora" in comando_normalizado
+        or "cerrar calculadora" in comando_normalizado
     ):
+        diagnosticar("intencion", "cerrar_aplicacion")
 
         cerrar_aplicacion(
             "calculadora"
@@ -1012,26 +1039,12 @@ def procesar_comando(comando):
     # ==================================================
 
     elif (
-        comando.startswith("recuérdame ")
-        or comando.startswith("recuerdame ")
+        comando_normalizado.startswith(("recuerdame ", "recordame ", "recuerda me "))
     ):
-
-        # Quitar "recuérdame"
-        if comando.startswith("recuérdame "):
-
-            contenido = comando.replace(
-                "recuérdame",
-                "",
-                1
-            ).strip()
-
-        else:
-
-            contenido = comando.replace(
-                "recuerdame",
-                "",
-                1
-            ).strip()
+        diagnosticar("intencion", "crear_recordatorio")
+        # Conservar el contenido original, incluyendo tildes y horas con ':'.
+        contenido = re.sub(r"^rec(?:u[eé]rdame|[oó]rdame|uerda\s+me)\b[\s,;:]*",
+                           "", comando).strip()
 
         # ==============================================
         # RECORDATORIO EN / DENTRO DE X MINUTOS U HORAS
@@ -1271,15 +1284,15 @@ def procesar_comando(comando):
     # ==================================================
 
     elif (
-        comando == "detener alarma"
-        or comando == "detén la alarma"
-        or comando == "deten la alarma"
-        or comando == "detener la alarma"
-        or comando == "apaga la alarma"
-        or comando == "apagar alarma"
-        or comando == "para la alarma"
-        or comando == "parar alarma"
+        comando_normalizado == "detener alarma"
+        or comando_normalizado == "deten la alarma"
+        or comando_normalizado == "detener la alarma"
+        or comando_normalizado == "apaga la alarma"
+        or comando_normalizado == "apagar alarma"
+        or comando_normalizado == "para la alarma"
+        or comando_normalizado == "parar alarma"
     ):
+        diagnosticar("intencion", "detener_alarma")
 
         resultado = detener_alarma()
 
@@ -1303,10 +1316,10 @@ def procesar_comando(comando):
 
 
     elif (
-    "alarma" in comando
-    or comando.startswith("despiértame ")
-    or comando.startswith("despiertame ")
+    "alarma" in comando_normalizado
+    or comando_normalizado.startswith("despiertame ")
     ):
+        diagnosticar("intencion", "crear_alarma")
 
         hora_texto = comando
 
@@ -2088,6 +2101,7 @@ def procesar_comando(comando):
     # ==================================================
 
     else:
+        diagnosticar("intencion", "consulta_general")
 
         hablar(
             preguntar_gemini(pregunta_original)
@@ -2107,13 +2121,10 @@ def procesar_desde_interfaz(
 
 
 def escuchar_desde_interfaz():
-    comando = escuchar()
-    if comando != "":
-        interfaz.iniciar_actividad("PROCESANDO")
-        try:
+    def ejecutar(comando):
+        with medir_procesamiento(procesar_comando):
             procesar_comando(comando)
-        finally:
-            interfaz.finalizar_actividad("PROCESANDO")
+    escuchar(al_reconocer=ejecutar)
 
 def avisar_recordatorio(texto):
 
@@ -2177,4 +2188,7 @@ interfaz.ventana.after(
 # INICIAR EVA
 # ==================================================
 
-interfaz.iniciar()
+try:
+    interfaz.iniciar()
+finally:
+    whisper.cerrar()
