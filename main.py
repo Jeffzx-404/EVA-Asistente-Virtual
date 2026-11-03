@@ -2,13 +2,14 @@ import speech_recognition as sr
 import pyttsx3
 import subprocess
 import os
-import json
 import webbrowser
 import threading
 import re
 import time
 
 from interfaz import InterfazEVA
+from persistencia import configurar_avisos
+from preferencias import cargar_preferencias, guardar_preferencias as persistir_preferencias
 from metricas_voz import (
     marcar_fin_captura, medir_primera_respuesta, medir_etapa, medir_procesamiento,
     registrar_duracion, limpiar_captura,
@@ -79,9 +80,6 @@ reconocedor.operation_timeout = 8
 
 bloqueo_voz = threading.Lock()
 
-
-# PREFERENCIAS JSON
-ARCHIVO_PREFERENCIAS = "preferencias.json"
 
 # ==================================================
 # EVA HABLA
@@ -228,66 +226,23 @@ def escuchar(al_reconocer=None):
 # MEMORIA DE EVA
 # ==================================================
 
-def cargar_preferencias():
+bloqueo_preferencias = threading.Lock()
 
-    preferencias_iniciales = {
-        "nombre_usuario": "",
-        "musica_favorita": "",
-        "aplicacion_favorita": ""
-    }
 
-    # Si el archivo no existe, EVA lo crea
-    if not os.path.exists("preferencias.json"):
-
-        with open(
-            "preferencias.json",
-            "w",
-            encoding="utf-8"
-        ) as archivo:
-
-            json.dump(
-                preferencias_iniciales,
-                archivo,
-                indent=4,
-                ensure_ascii=False
-            )
-
-        return preferencias_iniciales
-
-    # Si ya existe, EVA carga las preferencias
-    try:
-
-        with open(
-            "preferencias.json",
-            "r",
-            encoding="utf-8"
-        ) as archivo:
-
-            return json.load(archivo)
-
-    except (json.JSONDecodeError, FileNotFoundError):
-
-        return preferencias_iniciales
-
-def guardar_preferencias(preferencias):
-
-    with open(
-        ARCHIVO_PREFERENCIAS,
-        "w",
-        encoding="utf-8"
-    ) as archivo:
-
-        json.dump(
-            preferencias,
-            archivo,
-            indent=4,
-            ensure_ascii=False
-        )
+def guardar_preferencias(cambios, solo_si_vacios=False):
+    with bloqueo_preferencias:
+        actuales = persistir_preferencias(cambios, solo_si_vacios=solo_si_vacios)
+        if actuales is None:
+            return False
+        # Actualizar la memoria sólo después de confirmar la escritura.
+        preferencias.update(actuales)
+        return True
 
 
 preferencias = cargar_preferencias()
 
 interfaz = InterfazEVA()
+configurar_avisos(lambda mensaje: interfaz.agregar_mensaje("EVA", mensaje))
 whisper = ControlWhisper(
     informar=lambda texto: interfaz.agregar_mensaje("EVA", texto),
     actividad=lambda activa: (
@@ -316,13 +271,7 @@ if preferencias.get(
     ""
 ) == "":
 
-    preferencias[
-        "aplicacion_favorita"
-    ] = "spotify"
-
-    guardar_preferencias(
-        preferencias
-    )
+    guardar_preferencias({"aplicacion_favorita": "spotify"}, solo_si_vacios=True)
 
 
 # ==================================================
@@ -834,13 +783,9 @@ def procesar_comando(comando):
             ""
         ).strip()
 
-        preferencias[
-            "nombre_usuario"
-        ] = nombre
-
-        guardar_preferencias(
-            preferencias
-        )
+        if not guardar_preferencias({"nombre_usuario": nombre}):
+            hablar("No pude guardar tu nombre. Revisa el aviso de almacenamiento.")
+            return True
 
         hablar(
             f"Mucho gusto, {nombre}. "
@@ -891,13 +836,9 @@ def procesar_comando(comando):
             ""
         ).strip()
 
-        preferencias[
-            "aplicacion_favorita"
-        ] = aplicacion
-
-        guardar_preferencias(
-            preferencias
-        )
+        if not guardar_preferencias({"aplicacion_favorita": aplicacion}):
+            hablar("No pude guardar tu aplicación favorita. Revisa el aviso de almacenamiento.")
+            return True
 
         hablar(
             f"Entendido. Recordaré que "
@@ -1005,6 +946,10 @@ def procesar_comando(comando):
     ):
 
         pendientes = obtener_recordatorios_pendientes()
+
+        if pendientes is None:
+            hablar("No pude leer tus recordatorios. Revisa el aviso de almacenamiento.")
+            return True
 
         if len(pendientes) == 0:
 
@@ -1163,12 +1108,15 @@ def procesar_comando(comando):
 
                         # Guardar recordatorio
 
-                        crear_recordatorio(
+                        guardado = crear_recordatorio(
                             texto,
                             fecha,
                             hora,
                             minuto
                         )
+                        if not guardado:
+                            hablar("No pude guardar el recordatorio. Revisa el aviso de almacenamiento.")
+                            return True
 
                         # Crear respuesta natural
 
@@ -1253,12 +1201,15 @@ def procesar_comando(comando):
 
                 texto = texto.strip()
 
-                crear_recordatorio(
+                guardado = crear_recordatorio(
                     texto,
                     fecha,
                     hora,
                     minuto
                 )
+                if not guardado:
+                    hablar("No pude guardar el recordatorio. Revisa el aviso de almacenamiento.")
+                    return True
 
                 hablar(
                     f"De acuerdo. "
@@ -1532,11 +1483,9 @@ def procesar_comando(comando):
 
         else:
 
-            preferencias["musica_favorita"] = cancion
-
-            guardar_preferencias(
-                preferencias
-            )
+            if not guardar_preferencias({"musica_favorita": cancion}):
+                hablar("No pude guardar tu canción favorita. Revisa el aviso de almacenamiento.")
+                return True
 
             hablar(
                 f"Entendido. Recordaré que "
@@ -2131,8 +2080,8 @@ def avisar_recordatorio(texto):
     # EVA habla
     hablar(texto)
 
-    # Mostrar ventana
-    interfaz.mostrar_recordatorio(
+    # La voz se conserva; la confirmación procede del aviso visual de Tkinter.
+    return interfaz.mostrar_recordatorio(
         texto
     )
 
