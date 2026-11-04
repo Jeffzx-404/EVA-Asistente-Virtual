@@ -11,6 +11,7 @@ class InterfazEVA:
         self.funcion_escuchar = None
         self.funcion_comando = None
         self.funcion_cierre = None
+        self._hilo_interfaz = threading.get_ident()
         self._cerrando = threading.Event()
         self._actualizaciones = Queue()
         self._actividades = {"PREPARANDO": 0, "ESCUCHANDO": 0, "PROCESANDO": 0, "HABLANDO": 0}
@@ -545,7 +546,41 @@ class InterfazEVA:
         self._actualizar_estado()
 
     def mostrar_recordatorio(self, mensaje):
-        self._programar(messagebox.showinfo, "Recordatorio de EVA", mensaje)
+        """Desde un trabajador: esperar confirmación sin bloquear el hilo Tk.
+
+        Encolar no equivale a entregar. Sólo confirmar cuando el diálogo haya
+        terminado correctamente; un cierre de EVA o un error dejan pendiente.
+        """
+        if threading.get_ident() == self._hilo_interfaz:
+            raise RuntimeError("El aviso de recordatorio debe solicitarse desde un trabajador.")
+        terminado = threading.Event()
+        entregado = False
+
+        def mostrar():
+            nonlocal entregado
+            try:
+                if not self._cerrando.is_set():
+                    respuesta = messagebox.showinfo("Recordatorio de EVA", mensaje,
+                                                   parent=self.ventana)
+                    entregado = respuesta == "ok" and not self._cerrando.is_set()
+            except Exception:
+                entregado = False
+            finally:
+                terminado.set()
+
+        def programar():
+            try:
+                # Dejar que _vaciar_cola programe su siguiente pasada antes de
+                # abrir el diálogo; Tk sigue atendiendo eventos y actualizaciones.
+                self.ventana.after(0, mostrar)
+            except Exception:
+                terminado.set()
+
+        self._programar(programar)
+        while not terminado.wait(0.1):
+            if self._cerrando.is_set():
+                return False
+        return entregado
 
     def iniciar(self):
         self.ventana.mainloop()
