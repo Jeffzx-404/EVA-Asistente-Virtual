@@ -12,6 +12,8 @@ import sys
 import time
 import wave
 
+from .modelo_oficial import RUTA_MODELO
+
 
 def diagnosticar(motor, texto):
     from .entrenamiento import puntuar, decidir, DESCONOCIDO
@@ -152,7 +154,7 @@ def medir_conjunto(motor):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--modelo', type=Path, default=Path(__file__).resolve().parent / 'experimentos/v03_01/lr_caracteres_original.joblib')
+    parser.add_argument('--modelo', type=Path, default=RUTA_MODELO)
     modos = parser.add_mutually_exclusive_group()
     modos.add_argument('--wav', type=Path)
     modos.add_argument('--medir-conjunto', action='store_true')

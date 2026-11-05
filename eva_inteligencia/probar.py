@@ -1,9 +1,10 @@
-"""Prueba interactiva local sin conexión y sin ejecutar órdenes."""
-from .motor import MotorIntenciones
+"""Prueba interactiva del modelo oficial, sin conexión y sin ejecutar órdenes."""
+from .integracion import InterpreteLocal
+from .diagnostico_whisper import diagnosticar
 
 
 def main():
-    motor = MotorIntenciones()
+    motor = InterpreteLocal()
     print('Probador de intenciones de EVA (escribe salir para finalizar).')
     print('No se ejecutarán órdenes ni se crearán recordatorios.')
     while True:
@@ -14,7 +15,7 @@ def main():
             break
         if texto.lower() in {'salir', 'exit'}:
             break
-        print('Resultado:', motor.clasificar(texto))
+        print('Resultado:', diagnosticar(motor, texto))
 
 
 if __name__ == '__main__':

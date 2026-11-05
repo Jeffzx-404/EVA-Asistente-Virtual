@@ -9,10 +9,11 @@ from .parametros import extraer_parametros
 from .seguridad import revisar_seguridad
 from .texto import normalizar
 from .contexto import analizar_contexto, validar_contexto
+from .modelo_oficial import RUTA_MODELO
 
 
 class InterpreteLocal:
-    def __init__(self, ruta_modelo, personales=None):
+    def __init__(self, ruta_modelo=RUTA_MODELO, personales=None):
         # Sólo artefactos generados aquí y de confianza: joblib NO es un formato seguro
         # para archivos descargados ni proporcionados por comandos del usuario.
         self.paquete = joblib.load(Path(ruta_modelo))

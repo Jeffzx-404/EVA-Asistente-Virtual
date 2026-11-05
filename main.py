@@ -8,13 +8,17 @@ import re
 import time
 
 from interfaz import InterfazEVA
+from eva_inteligencia.observacion import crear_observador
 from persistencia import configurar_avisos
 from preferencias import cargar_preferencias, guardar_preferencias as persistir_preferencias
 from metricas_voz import (
     marcar_fin_captura, medir_primera_respuesta, medir_etapa, medir_procesamiento,
     registrar_duracion, limpiar_captura,
 )
-from comandos_voz import preparar_comando, normalizar_intencion, es_consulta_hora, diagnosticar
+from comandos_voz import preparar_comando, normalizar_intencion, es_consulta_hora, es_consulta_fecha, diagnosticar
+from aclaraciones_comandos import (
+    SeguimientoAclaraciones, es_consulta_personal, preparar_recordatorio, aclaracion_musical,
+)
 from whisper_control import (
     ControlWhisper, FlujoCancelable, WhisperNoDisponible, USAR_GOOGLE_FALLBACK,
     configurar_captura,
@@ -242,6 +246,7 @@ def guardar_preferencias(cambios, solo_si_vacios=False):
 preferencias = cargar_preferencias()
 
 interfaz = InterfazEVA()
+observador_inteligencia = crear_observador()
 configurar_avisos(lambda mensaje: interfaz.agregar_mensaje("EVA", mensaje))
 whisper = ControlWhisper(
     informar=lambda texto: interfaz.agregar_mensaje("EVA", texto),
@@ -250,7 +255,14 @@ whisper = ControlWhisper(
         else interfaz.finalizar_actividad("PREPARANDO")
     ),
 )
-interfaz.configurar_cierre(whisper.cerrar)
+def cerrar_servicios():
+    try:
+        observador_inteligencia.cerrar()
+    finally:
+        whisper.cerrar()
+
+
+interfaz.configurar_cierre(cerrar_servicios)
 interfaz.ventana.after(0, whisper.iniciar)
 interfaz.configurar_gemini(
     consultar_estado_gemini, guardar_configuracion_gemini,
@@ -521,6 +533,31 @@ def buscar_internet(busqueda):
 
 # El procesador consulta esta tabla antes de evaluar cualquier comando.
 respuestas_broma = {}
+seguimiento_comandos = SeguimientoAclaraciones()
+
+
+def guardar_recordatorio_validado(datos):
+    guardado = crear_recordatorio(datos['texto'], datos['fecha'], datos['hora'], datos['minuto'])
+    if not guardado:
+        hablar("No pude guardar el recordatorio. Revisa el aviso de almacenamiento.")
+        return True
+    hablar(f"De acuerdo. Te recordaré {datos['texto']} el {datos['fecha']} "
+           f"a las {datos['hora']:02d}:{datos['minuto']:02d}.")
+    return True
+
+
+def reproducir_busqueda_musical(busqueda):
+    # Mismo ejecutor tradicional, compartido con la respuesta a una aclaración.
+    if not spotify_disponible():
+        hablar("Spotify no está configurado en este equipo.")
+        return True
+    hablar(f"Buscando {busqueda} en Spotify.")
+    resultado = reproducir_cancion(busqueda)
+    if resultado["exito"]:
+        hablar(f"Reproduciendo {resultado['titulo']} de {resultado['artista']}.")
+    else:
+        hablar(resultado["mensaje"])
+    return True
 
 
 def procesar_comando(comando):
@@ -528,12 +565,25 @@ def procesar_comando(comando):
     comando = preparar_comando(comando)
     comando_normalizado = normalizar_intencion(comando)
     comando_limpio = comando
+    turno, aclarada = seguimiento_comandos.recibir(comando, datetime.now())
 
     if comando_limpio in respuestas_broma:
         diagnosticar("intencion", "respuesta_personalizada")
         hablar(respuestas_broma[comando_limpio])
         return
 
+    if aclarada is not None:
+        if aclarada['tipo'] == 'recordatorio':
+            diagnosticar("intencion", "crear_recordatorio")
+            return guardar_recordatorio_validado(aclarada['parametros'])
+        if aclarada['tipo'] == 'musica':
+            return reproducir_busqueda_musical(aclarada['consulta'])
+        hablar(aclarada['mensaje'])
+        return True
+
+    if es_consulta_personal(comando):
+        hablar("No conozco la fecha ni la hora de ese evento personal. No voy a suponerlas.")
+        return True
 
     # ==================================================
     # HORA
@@ -985,6 +1035,7 @@ def procesar_comando(comando):
 
     elif (
         comando_normalizado.startswith(("recuerdame ", "recordame ", "recuerda me "))
+        or comando_normalizado in ("recuerdame", "recordame", "recuerda me")
     ):
         diagnosticar("intencion", "crear_recordatorio")
         # Conservar el contenido original, incluyendo tildes y horas con ':'.
@@ -1151,83 +1202,16 @@ def procesar_comando(comando):
         # RECORDATORIO A UNA HORA ESPECÍFICA
         # ==============================================
 
-        elif " a las " in contenido:
-
-            texto, hora_texto = contenido.rsplit(
-                " a las ",
-                1
-            )
-
-            momento = interpretar_hora(
-                hora_texto
-            )
-
-            if momento is None:
-
-                hablar(
-                    "No pude entender la hora."
-                )
-
-            else:
-
-                hora, minuto = momento
-
-                fecha = interpretar_fecha(
-                    contenido
-                )
-
-                # Quitar fecha del texto
-
-                palabras_fecha = [
-                    "hoy",
-                    "mañana",
-                    "el lunes",
-                    "el martes",
-                    "el miércoles",
-                    "el miercoles",
-                    "el jueves",
-                    "el viernes",
-                    "el sábado",
-                    "el sabado",
-                    "el domingo"
-                ]
-
-                for palabra in palabras_fecha:
-
-                    texto = texto.replace(
-                        palabra,
-                        ""
-                    )
-
-                texto = texto.strip()
-
-                guardado = crear_recordatorio(
-                    texto,
-                    fecha,
-                    hora,
-                    minuto
-                )
-                if not guardado:
-                    hablar("No pude guardar el recordatorio. Revisa el aviso de almacenamiento.")
-                    return True
-
-                hablar(
-                    f"De acuerdo. "
-                    f"Te recordaré {texto} "
-                    f"a las "
-                    f"{hora:02d}:{minuto:02d}."
-                )
-
-        # ==============================================
-        # NO SE ENTENDIÓ EL TIEMPO
-        # ==============================================
-
         else:
-
-            hablar(
-                "Entendí lo que quieres recordar, "
-                "pero necesito que me indiques cuándo."
-            )
+            revision = preparar_recordatorio(comando, datetime.now())
+            if revision['estado'] == 'propuesta':
+                return guardar_recordatorio_validado(revision['parametros'])
+            if revision.get('pendiente'):
+                if not seguimiento_comandos.guardar(revision['pendiente'], turno):
+                    hablar("Llegó otra instrucción. Repite el recordatorio completo para aclararlo.")
+                    return True
+            hablar(revision['pregunta'])
+            return True
 
 
     # DETENER ALARMA
@@ -1608,6 +1592,14 @@ def procesar_comando(comando):
         or comando.startswith("escuchar ")
     ):
 
+        pregunta = aclaracion_musical(comando)
+        if pregunta:
+            if not seguimiento_comandos.guardar({'tipo': 'musica'}, turno):
+                hablar("Llegó otra instrucción. Repite qué canción quieres escuchar.")
+                return True
+            hablar(pregunta)
+            return True
+
         busqueda = comando
 
         frases_inicio = [
@@ -1659,32 +1651,7 @@ def procesar_comando(comando):
 
         else:
 
-            if not spotify_disponible():
-                hablar("Spotify no está configurado en este equipo.")
-                return True
-
-            hablar(
-                f"Buscando {busqueda} "
-                f"en Spotify."
-            )
-
-            resultado = reproducir_cancion(
-                busqueda
-            )
-
-            if resultado["exito"]:
-
-                hablar(
-                    f"Reproduciendo "
-                    f"{resultado['titulo']} "
-                    f"de {resultado['artista']}."
-                )
-
-            else:
-
-                hablar(
-                    resultado["mensaje"]
-                )
+            return reproducir_busqueda_musical(busqueda)
 
 
 
@@ -1885,14 +1852,7 @@ def procesar_comando(comando):
     # FECHA ACTUAL
     # ==================================================
 
-    elif (
-        "qué fecha es" in comando
-        or "que fecha es" in comando
-        or "dime la fecha" in comando
-        or "fecha actual" in comando
-        or "qué día es hoy" in comando
-        or "que dia es hoy" in comando
-    ):
+    elif es_consulta_fecha(comando_normalizado):
 
         ahora = datetime.now()
 
@@ -2063,7 +2023,11 @@ def procesar_comando(comando):
 def procesar_desde_interfaz(
     comando
 ):
-
+    # El diagnóstico nunca decide, responde ni ejecuta el comando tradicional.
+    try:
+        observador_inteligencia.observar(comando, origen="texto")
+    except Exception:
+        pass
     procesar_comando(
         comando
     )
@@ -2071,6 +2035,10 @@ def procesar_desde_interfaz(
 
 def escuchar_desde_interfaz():
     def ejecutar(comando):
+        try:
+            observador_inteligencia.observar(comando, origen="voz")
+        except Exception:
+            pass
         with medir_procesamiento(procesar_comando):
             procesar_comando(comando)
     escuchar(al_reconocer=ejecutar)
@@ -2140,4 +2108,4 @@ interfaz.ventana.after(
 try:
     interfaz.iniciar()
 finally:
-    whisper.cerrar()
+    cerrar_servicios()

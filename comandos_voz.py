@@ -33,9 +33,19 @@ def es_consulta_hora(texto):
     texto = re.sub(r"^por favor\s+|\s+por favor$", "", texto).strip()
     return bool(re.fullmatch(
         r"(?:que (?:hora|ahora) es(?: ahora)?|que h?oras(?: son)?|"
-        r"(?:dime|dame) la hora(?: actual)?|hora actual|cual es la hora(?: actual)?)",
+        r"(?:dime|dame) (?:la hora(?: actual)?|que (?:hora|ahora) es(?: ahora)?)|"
+        r"hora actual|cual es la hora(?: actual)?)",
         texto,
     ))
+
+
+def es_consulta_fecha(texto):
+    """Sólo calendario actual; una fecha personal no es una coincidencia parcial."""
+    texto = normalizar_intencion(texto)
+    texto = re.sub(r"^por favor\s+|\s+por favor$", "", texto).strip()
+    return bool(re.fullmatch(
+        r"(?:(?:dime )?(?:que fecha es(?: hoy)?|que dia es hoy|cual es la fecha(?: actual| de hoy)?)|"
+        r"(?:dime|dame) la fecha(?: actual| de hoy)?|fecha actual)", texto))
 
 
 def diagnosticar(evento, detalle):

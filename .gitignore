@@ -33,3 +33,6 @@ recordatorios.json
 AGENTS.md
 
 /tests/
+
+# Modelos alternativos e informes locales; el modelo oficial está en modelos/.
+/eva_inteligencia/experimentos/

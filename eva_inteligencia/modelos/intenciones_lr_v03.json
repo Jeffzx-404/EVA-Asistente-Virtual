@@ -1,0 +1,22 @@
+{
+  "archivo": "intenciones_lr_v03.joblib",
+  "sha256": "3c99658cf506c81939b1a2fc7b71e629b1e1df3fcb57eaed12460bc402514242",
+  "bytes": 206070,
+  "formato": 1,
+  "version_sklearn": "1.9.1",
+  "python_validado": "3.13.15",
+  "origen_historico": "experimentos/v03_01/lr_caracteres_original.joblib",
+  "copia_binaria_sin_reentrenamiento": true,
+  "clasificador": "LogisticRegression",
+  "vectorizador": "TfidfVectorizer char_wb (2, 5), sublinear_tf=True",
+  "referencias": 168,
+  "variables": 2941,
+  "umbrales": {"score": 0.4, "similitud": 0.0, "margen": 0.0},
+  "clases": [
+    "abrir_aplicacion", "ayuda", "cerrar_aplicacion", "consultar_fecha",
+    "consultar_hora", "consultar_recordatorios", "crear_alarma", "crear_recordatorio",
+    "detener_alarma", "fuera_de_alcance", "spotify_pausar", "spotify_reproducir"
+  ],
+  "seleccion": "Mayor objetivo de validacion en v03; conservado en v04 al no existir mejora consistente. No se ha hecho una nueva seleccion.",
+  "uso": "Diagnostico local sin acciones; requiere validacion contextual. La procedencia historica no es una dependencia de carga."
+}

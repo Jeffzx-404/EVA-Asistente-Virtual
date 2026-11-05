@@ -33,7 +33,10 @@ salidas de audio o interfaces duplicadas; elige el dispositivo de entrada corres
 Si no abre, comprueba la selección, los permisos de micrófono de Windows y si otra
 aplicación ocupa el dispositivo. No hace falta iniciar EVA ni abrir aplicaciones para probar.
 
-El diagnóstico usa el modelo anterior por defecto; `--modelo` permite elegir explícitamente
+El diagnóstico usa por defecto `modelos/intenciones_lr_v03.joblib`, copia exacta
+del modelo seleccionado v03, mediante `modelo_oficial.py`. No necesita
+`experimentos/`; véase [MODELO_OFICIAL.md](MODELO_OFICIAL.md).
+`--modelo` permite elegir explícitamente
 un artefacto local de confianza. No se descargan modelos ni se usa un fallback de red.
 Si Small no está disponible en caché, el diagnóstico informa el fallo antes de abrir el micrófono.
 

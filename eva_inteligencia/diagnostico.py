@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from persistencia import ErrorPersistencia
 from .personalizacion import ComandosPersonales
+from .modelo_oficial import RUTA_MODELO
 
 
 def main():
@@ -14,7 +15,7 @@ def main():
     tareas = parser.add_subparsers(dest='tarea', required=True)
     interpretar = tareas.add_parser('interpretar')
     interpretar.add_argument('texto')
-    interpretar.add_argument('--modelo', type=Path, required=True)
+    interpretar.add_argument('--modelo', type=Path, default=RUTA_MODELO)
     ensenar = tareas.add_parser('ensenar')
     ensenar.add_argument('expresion', help='Cuando diga modo estudio, abre la calculadora')
     tareas.add_parser('listar')
