@@ -1,0 +1,41 @@
+texto,intencion,categoria,esperado
+EVA dime por favor la hora local,consultar_hora,local,propuesta
+Pon una alarma mañana a las siete y media de la mañana,crear_alarma,local,propuesta
+Recuérdame comprar arroz y verduras mañana a las 19:10,crear_recordatorio,local,propuesta
+¿Podrías abrir Paint por favor?,abrir_aplicacion,local,propuesta
+Eva muestra los recordatorios que faltan,consultar_recordatorios,transcripcion_simulada,propuesta
+Pausa espotifai un momento,spotify_pausar,transcripcion_simulada,propuesta
+Reanuda la musica que escuchaba,spotify_reproducir,transcripcion_simulada,propuesta
+Quiero conocer las funciones que ofrece EVA,ayuda,local,propuesta
+Abre el explorador y silencia el despertador,fuera_de_alcance,compuesta,rechazo
+Necesito la fecha actual y que pauses Spotify,fuera_de_alcance,compuesta,rechazo
+Cierra Chrome mientras abres el bloc de notas,fuera_de_alcance,compuesta,rechazo
+Consulta mis pendientes luego inicia la calculadora,fuera_de_alcance,compuesta,rechazo
+Pon una alarma en media hora además reproduce Eres tú,fuera_de_alcance,compuesta,rechazo
+Abre Paint; envía un correo al profesor,fuera_de_alcance,compuesta,rechazo
+Dime la hora. Reserva una mesa para dos,fuera_de_alcance,compuesta,rechazo
+Abre la calculadora o inicia Spotify,fuera_de_alcance,alternativa,rechazo
+Abre Paint y el explorador de archivos,fuera_de_alcance,compuesta,rechazo
+Pausa Spotify cierra Paint abre la calculadora,fuera_de_alcance,compuesta,rechazo
+No quiero que abras el explorador de archivos,fuera_de_alcance,negacion,rechazo
+Tampoco cierres el navegador ahora,fuera_de_alcance,negacion,rechazo
+Evita reproducir canciones durante la reunión,fuera_de_alcance,negacion,rechazo
+Nunca silencies el despertador sin avisarme,fuera_de_alcance,negacion,rechazo
+Sin abrir Chrome dime la fecha,fuera_de_alcance,negacion,rechazo
+No pauses la canción pero abre Paint,fuera_de_alcance,negacion_compuesta,rechazo
+Si termina la descarga abre Paint,fuera_de_alcance,condicional,rechazo
+Cuando regrese de clase reproduce música,fuera_de_alcance,condicional,rechazo
+Cuál es la fecha de vencimiento de mi licencia,fuera_de_alcance,fecha_personal,rechazo
+Recuérdame cuál fue la fecha de la independencia,fuera_de_alcance,pregunta,rechazo
+Necesito ayuda para reparar una alarma doméstica,fuera_de_alcance,ayuda_externa,rechazo
+Háblame de las funciones matemáticas,fuera_de_alcance,ayuda_externa,rechazo
+Elimina mi historial del navegador Chrome,fuera_de_alcance,destructiva,rechazo
+Abre CMD y ejecuta un script,fuera_de_alcance,destructiva,rechazo
+Pon música igual que ayer,spotify_reproducir,ambigua,aclaracion
+Recuérdame eso mañana a las 10:40,crear_recordatorio,referencia,aclaracion
+Recuérdame estudiar mañana a las cinco o seis de la tarde,crear_recordatorio,ambigua,aclaracion
+Pon una alarma a las tantas,crear_alarma,incompleta,aclaracion
+Abre aquella aplicación que te dije,abrir_aplicacion,referencia,aclaracion
+Cierra ese programa,cerrar_aplicacion,referencia,aclaracion
+Reproduce la misma canción de antes,spotify_reproducir,referencia,aclaracion
+Recuérdame revisar el correo en cinco,crear_recordatorio,incompleta,aclaracion

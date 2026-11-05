@@ -1,0 +1,22 @@
+{
+  "fecha_utc": "2026-11-04T22:03:44.480417+00:00",
+  "version_python": "3.13.15",
+  "version_sklearn": "1.9.1",
+  "ejemplos": 282,
+  "clases": {
+    "consultar_hora": 20,
+    "consultar_fecha": 20,
+    "crear_recordatorio": 35,
+    "consultar_recordatorios": 20,
+    "crear_alarma": 23,
+    "detener_alarma": 20,
+    "abrir_aplicacion": 20,
+    "cerrar_aplicacion": 20,
+    "spotify_reproducir": 20,
+    "spotify_pausar": 20,
+    "ayuda": 20,
+    "fuera_de_alcance": 44
+  },
+  "exactitud_reserva": 0.8450704225352113,
+  "sha256_datos": "51046a40df74f57c0f7c70073ebe29c45432aa4f17777af9502dd579f0cca0ae"
+}

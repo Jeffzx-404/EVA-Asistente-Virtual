@@ -1,0 +1,283 @@
+frase,intencion
+qué hora es,consultar_hora
+dime la hora,consultar_hora
+puedes decirme la hora,consultar_hora
+necesito saber la hora,consultar_hora
+me dices la hora actual,consultar_hora
+qué hora tenemos,consultar_hora
+quiero saber qué hora es,consultar_hora
+cuál es la hora,consultar_hora
+dime qué hora es ahora,consultar_hora
+me puedes dar la hora,consultar_hora
+a qué hora estamos,consultar_hora
+podrías decir la hora,consultar_hora
+hora actual por favor,consultar_hora
+indícame la hora,consultar_hora
+qué hora marca el reloj,consultar_hora
+oye eva quiero la hora,consultar_hora
+consultar hora,consultar_hora
+hora en este momento,consultar_hora
+dime la hora exacta,consultar_hora
+me informas qué hora es,consultar_hora
+qué fecha es hoy,consultar_fecha
+dime la fecha,consultar_fecha
+en qué día estamos,consultar_fecha
+qué día es hoy,consultar_fecha
+cuál es la fecha actual,consultar_fecha
+me dices el día de hoy,consultar_fecha
+necesito la fecha de hoy,consultar_fecha
+qué fecha tenemos,consultar_fecha
+en qué fecha estamos,consultar_fecha
+dime el día de la semana,consultar_fecha
+qué día de la semana es,consultar_fecha
+qué número de día es hoy,consultar_fecha
+qué día y mes es,consultar_fecha
+me informas la fecha,consultar_fecha
+consulta la fecha,consultar_fecha
+quiero saber el día actual,consultar_fecha
+dime qué día es,consultar_fecha
+hoy qué día cae,consultar_fecha
+qué fecha marca el calendario,consultar_fecha
+fecha de hoy,consultar_fecha
+recuérdame estudiar mañana,crear_recordatorio
+pon un recordatorio para el viernes,crear_recordatorio
+avísame que debo hacer la tarea,crear_recordatorio
+no dejes que olvide llamar a mamá,crear_recordatorio
+crea un recordatorio para estudiar,crear_recordatorio
+anota que debo entregar mi proyecto,crear_recordatorio
+recuérdame mi reunión a las seis,crear_recordatorio
+programa un recordatorio para mañana,crear_recordatorio
+quiero un aviso para tomar mis apuntes,crear_recordatorio
+tengo que repasar matemáticas a las cinco,crear_recordatorio
+necesito que me recuerdes comprar cuadernos,crear_recordatorio
+recuérdame terminar el informe,crear_recordatorio
+guarda un recordatorio para el lunes,crear_recordatorio
+hazme acordar de la clase,crear_recordatorio
+avísame el jueves de la exposición,crear_recordatorio
+no quiero olvidarme de estudiar,crear_recordatorio
+recuerda que tengo tarea a las ocho,crear_recordatorio
+ponme un aviso para las siete,crear_recordatorio
+recuérdame salir de casa,crear_recordatorio
+configura un recordatorio de práctica,crear_recordatorio
+qué recordatorios tengo,consultar_recordatorios
+muéstrame mis recordatorios,consultar_recordatorios
+cuáles son mis recordatorios pendientes,consultar_recordatorios
+hay recordatorios para hoy,consultar_recordatorios
+consulta mis pendientes,consultar_recordatorios
+qué tengo anotado para mañana,consultar_recordatorios
+dime los recordatorios activos,consultar_recordatorios
+quiero ver mi lista de recordatorios,consultar_recordatorios
+qué tareas me tienes que recordar,consultar_recordatorios
+enséñame los avisos guardados,consultar_recordatorios
+revisa mis recordatorios,consultar_recordatorios
+tengo algún recordatorio,consultar_recordatorios
+qué recordatorios hay programados,consultar_recordatorios
+lista mis recordatorios,consultar_recordatorios
+recordatorios pendientes,consultar_recordatorios
+muestra mis avisos futuros,consultar_recordatorios
+qué cosas tengo anotadas,consultar_recordatorios
+dime qué recordatorios siguen activos,consultar_recordatorios
+consulta la lista de pendientes,consultar_recordatorios
+cuéntame qué queda por recordar,consultar_recordatorios
+pon una alarma a las siete,crear_alarma
+despiértame a las seis,crear_alarma
+programa una alarma para mañana,crear_alarma
+activa una alarma dentro de quince minutos,crear_alarma
+necesito una alarma en una hora,crear_alarma
+haz sonar una alarma a las ocho,crear_alarma
+configura una alarma a las cinco,crear_alarma
+quiero una alarma para las nueve,crear_alarma
+establece una alarma para el lunes,crear_alarma
+pon el despertador a las seis,crear_alarma
+haz una alarma para las dos,crear_alarma
+programa el despertador,crear_alarma
+avísame con una alarma a medianoche,crear_alarma
+crea una alarma para las cuatro,crear_alarma
+pon alarma en treinta minutos,crear_alarma
+que suene una alarma a las once,crear_alarma
+activar alarma para esta tarde,crear_alarma
+establece mi despertador para mañana,crear_alarma
+alarma para las tres,crear_alarma
+necesito un despertador a las siete,crear_alarma
+detén la alarma,detener_alarma
+silencia la alarma,detener_alarma
+apaga la alarma que está sonando,detener_alarma
+para la alarma,detener_alarma
+deja de sonar la alarma,detener_alarma
+detener alarma ahora,detener_alarma
+quita el sonido de la alarma,detener_alarma
+desactiva la alarma que suena,detener_alarma
+quiero apagar el despertador,detener_alarma
+cállate alarma,detener_alarma
+corta la alarma,detener_alarma
+silencia el despertador,detener_alarma
+la alarma ya puede parar,detener_alarma
+basta con la alarma,detener_alarma
+apaga el sonido del despertador,detener_alarma
+detén el sonido de alerta,detener_alarma
+para el despertador,detener_alarma
+quita la alarma que suena,detener_alarma
+quiero silenciar la alarma,detener_alarma
+finaliza la alarma activa,detener_alarma
+abre la calculadora,abrir_aplicacion
+inicia el bloc de notas,abrir_aplicacion
+ejecuta el navegador,abrir_aplicacion
+abre chrome,abrir_aplicacion
+quiero abrir la calculadora,abrir_aplicacion
+abre spotify por favor,abrir_aplicacion
+lanza el explorador de archivos,abrir_aplicacion
+puedes iniciar paint,abrir_aplicacion
+abre la aplicación de notas,abrir_aplicacion
+abre el explorador,abrir_aplicacion
+pon en marcha la calculadora,abrir_aplicacion
+necesito abrir word,abrir_aplicacion
+inicia la aplicación de música,abrir_aplicacion
+abre el programa de dibujo,abrir_aplicacion
+ejecuta el bloc de notas,abrir_aplicacion
+abre microsoft edge,abrir_aplicacion
+abre el reproductor,abrir_aplicacion
+quiero iniciar el navegador,abrir_aplicacion
+abre el editor de texto,abrir_aplicacion
+enciende la aplicación de calculadora,abrir_aplicacion
+cierra la calculadora,cerrar_aplicacion
+quiero cerrar el navegador,cerrar_aplicacion
+cierra el bloc de notas,cerrar_aplicacion
+sal de paint,cerrar_aplicacion
+termina la aplicación de notas,cerrar_aplicacion
+cierra chrome,cerrar_aplicacion
+puedes cerrar spotify,cerrar_aplicacion
+cierra el explorador de archivos,cerrar_aplicacion
+necesito cerrar word,cerrar_aplicacion
+cierra la ventana de calculadora,cerrar_aplicacion
+cierra el editor de texto,cerrar_aplicacion
+sal del navegador,cerrar_aplicacion
+finaliza el programa de música,cerrar_aplicacion
+deja de usar la calculadora,cerrar_aplicacion
+cierra microsoft edge,cerrar_aplicacion
+termina el programa abierto,cerrar_aplicacion
+cierra la aplicación de dibujo,cerrar_aplicacion
+quiero salir de bloc de notas,cerrar_aplicacion
+puedes cerrar el explorador,cerrar_aplicacion
+cierra el reproductor,cerrar_aplicacion
+pon música en spotify,spotify_reproducir
+reproduce música,spotify_reproducir
+quiero escuchar una canción,spotify_reproducir
+continúa la música en spotify,spotify_reproducir
+dale play a spotify,spotify_reproducir
+reproduce mi lista de reproducción,spotify_reproducir
+pon mi playlist de estudio,spotify_reproducir
+quiero escuchar mi música,spotify_reproducir
+activa la reproducción en spotify,spotify_reproducir
+reanuda spotify,spotify_reproducir
+pon canciones para estudiar,spotify_reproducir
+escuchar música en spotify,spotify_reproducir
+reproduce el álbum,spotify_reproducir
+dale reproducir,spotify_reproducir
+pon una canción de mi lista,spotify_reproducir
+reproduce música relajante,spotify_reproducir
+continúa con la canción,spotify_reproducir
+vuelve a poner música,spotify_reproducir
+inicia la reproducción musical,spotify_reproducir
+pon spotify a reproducir,spotify_reproducir
+pausa spotify,spotify_pausar
+detén la música,spotify_pausar
+para la canción,spotify_pausar
+haz pausa en la reproducción,spotify_pausar
+quiero pausar la música,spotify_pausar
+silencia la reproducción de spotify,spotify_pausar
+pon la música en pausa,spotify_pausar
+deja de reproducir spotify,spotify_pausar
+pausa la canción actual,spotify_pausar
+detén la reproducción musical,spotify_pausar
+haz una pausa en spotify,spotify_pausar
+para spotify un momento,spotify_pausar
+detén el audio de spotify,spotify_pausar
+quiero detener la canción,spotify_pausar
+interrumpe la música,spotify_pausar
+pausar música,spotify_pausar
+corta la canción por ahora,spotify_pausar
+pon spotify en pausa,spotify_pausar
+para la lista de reproducción,spotify_pausar
+deja la música en pausa,spotify_pausar
+qué puedes hacer,ayuda
+muéstrame los comandos,ayuda
+necesito ayuda,ayuda
+cómo funciona eva,ayuda
+dime tus funciones,ayuda
+enséñame qué sabes hacer,ayuda
+lista las opciones disponibles,ayuda
+cuáles son tus capacidades,ayuda
+ayuda con los comandos,ayuda
+quiero ver las instrucciones,ayuda
+qué órdenes entiendes,ayuda
+explícame cómo usarte,ayuda
+dime tus comandos de voz,ayuda
+qué acciones admites,ayuda
+cómo puedo pedirte cosas,ayuda
+manual de uso de eva,ayuda
+ver funciones del asistente,ayuda
+enséñame a usar eva,ayuda
+quiero conocer tus herramientas,ayuda
+muestra la ayuda,ayuda
+cuéntame un chiste,fuera_de_alcance
+resuelve una integral,fuera_de_alcance
+quién ganó el mundial,fuera_de_alcance
+cómo se hace una torta,fuera_de_alcance
+dime el clima de lima,fuera_de_alcance
+busca en internet noticias,fuera_de_alcance
+envía un correo electrónico,fuera_de_alcance
+lee mis mensajes de whatsapp,fuera_de_alcance
+elimina mis documentos,fuera_de_alcance
+borra todas las fotos,fuera_de_alcance
+qué significa la fotosíntesis,fuera_de_alcance
+traduce esta frase al japonés,fuera_de_alcance
+escribe una poesía,fuera_de_alcance
+hazme un dibujo,fuera_de_alcance
+responde una pregunta de historia,fuera_de_alcance
+explica la teoría de la relatividad,fuera_de_alcance
+crea una presentación,fuera_de_alcance
+apaga la computadora,fuera_de_alcance
+reinicia windows,fuera_de_alcance
+desinstala un programa,fuera_de_alcance
+modifica mi registro de windows,fuera_de_alcance
+abre una página web prohibida,fuera_de_alcance
+compra un producto en una tienda,fuera_de_alcance
+cuánto es dos más dos,fuera_de_alcance
+resume este libro,fuera_de_alcance
+qué comida preparo hoy,fuera_de_alcance
+necesito un consejo de estudio,fuera_de_alcance
+cómo aprendo álgebra,fuera_de_alcance
+inventa una historia corta,fuera_de_alcance
+qué película recomiendas,fuera_de_alcance
+avísame dentro de quince minutos que revise mis apuntes,crear_recordatorio
+avísame en veinte minutos que debo hacer una llamada,crear_recordatorio
+necesito que me avises dentro de media hora para estudiar,crear_recordatorio
+quiero que me recuerdes en diez minutos revisar la tarea,crear_recordatorio
+puedes avisarme en media hora de mi reunión,crear_recordatorio
+recuérdame en veinte minutos que salga a entrenar,crear_recordatorio
+avísame que tengo que entregar un trabajo en una hora,crear_recordatorio
+me avisas dentro de treinta minutos para repasar,crear_recordatorio
+quiero un aviso en veinte minutos para practicar,crear_recordatorio
+necesito un recordatorio para dentro de treinta minutos,crear_recordatorio
+avísame en quince minutos de hacer la tarea,crear_recordatorio
+no te olvides de recordarme cerrar los libros en media hora,crear_recordatorio
+en veinte minutos recuérdame repasar,crear_recordatorio
+por favor avísame en una hora que debo estudiar,crear_recordatorio
+recuérdame que tengo evaluación a las tres,crear_recordatorio
+quiero que suene una alarma en veinte minutos,crear_alarma
+pon una alarma para dentro de veinte minutos,crear_alarma
+avísame con una alarma en quince minutos,crear_alarma
+avísame si cambia el clima,fuera_de_alcance
+necesito que me avises cuando llegue un correo,fuera_de_alcance
+avísame cuando alguien me escriba,fuera_de_alcance
+vigila el tráfico y avísame si hay accidentes,fuera_de_alcance
+explícame por qué brillan las estrellas,fuera_de_alcance
+me puedes explicar cómo funciona el sistema solar,fuera_de_alcance
+enséñame los pasos de la fotosíntesis,fuera_de_alcance
+cuéntame cómo se forma la lluvia,fuera_de_alcance
+quiero entender la diferencia entre células,fuera_de_alcance
+explícame el ciclo del agua,fuera_de_alcance
+qué es la fuerza de gravedad,fuera_de_alcance
+cómo funciona un motor de coche,fuera_de_alcance
+dime qué es la química,fuera_de_alcance
+explícame cómo funciona una planta,fuera_de_alcance

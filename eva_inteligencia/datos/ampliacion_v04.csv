@@ -1,0 +1,199 @@
+texto,intencion
+Infórmame qué hora marca el equipo,consultar_hora
+Estoy sin reloj y necesito la hora,consultar_hora
+Me lees la hora de tu reloj,consultar_hora
+Comprueba el horario actual del ordenador,consultar_hora
+Quiero consultar la hora local,consultar_hora
+Me dices las horas y los minutos actuales,consultar_hora
+Cómo vamos de hora en este momento,consultar_hora
+Necesito la lectura del reloj ahora,consultar_hora
+Qué hora indica Windows,consultar_hora
+La hora actual por favor EVA,consultar_hora
+Podrías comunicarme la fecha completa,consultar_fecha
+Necesito anotar el día de hoy,consultar_fecha
+Revisa en el calendario en qué fecha estamos,consultar_fecha
+Me recuerdas el día del mes actual,consultar_fecha
+Indícame día mes y año,consultar_fecha
+Hoy estamos a qué fecha,consultar_fecha
+Deseo consultar la fecha del equipo,consultar_fecha
+Qué número de día toca hoy,consultar_fecha
+Estamos en qué mes y año,consultar_fecha
+Dime el día de la semana actual,consultar_fecha
+Recuérdame llevar el paraguas hoy a las 18:45,crear_recordatorio
+Avísame de regar el jardín dentro de una hora,crear_recordatorio
+Necesito que me recuerdes devolver el libro en cuarenta minutos,crear_recordatorio
+Programa un recordatorio para preparar la mochila mañana a las 20:00,crear_recordatorio
+Anota que debo comprar pan para mañana,crear_recordatorio
+Que no se me olvide revisar las plantas,crear_recordatorio
+Crea un aviso para sacar al perro al mediodía,crear_recordatorio
+Hazme acordar de entregar la ficha,crear_recordatorio
+Me tienes que recordar la reunión del equipo,crear_recordatorio
+Guarda un recordatorio sobre el cumpleaños de Ana,crear_recordatorio
+Avísame de beber agua en una hora y media,crear_recordatorio
+Pon un recordatorio para recoger el paquete pasado mañana a las 11:00,crear_recordatorio
+Enséñame qué avisos tengo anotados,consultar_recordatorios
+Necesito revisar los asuntos que me vas a recordar,consultar_recordatorios
+Cuéntame qué pendientes he guardado,consultar_recordatorios
+Repasa conmigo mis recordatorios,consultar_recordatorios
+Hay algún recordatorio registrado,consultar_recordatorios
+Lee los avisos pendientes que tengo,consultar_recordatorios
+Deseo ver todos mis recordatorios actuales,consultar_recordatorios
+Qué cosas te pedí que me recordaras,consultar_recordatorios
+Revisa el listado de avisos que programé,consultar_recordatorios
+Muéstrame los pendientes almacenados,consultar_recordatorios
+Activa un despertador dentro de una hora,crear_alarma
+Quiero que una alarma suene en media hora,crear_alarma
+Prepara una alarma para hoy a las 19:20,crear_alarma
+Configúrame el despertador para mañana a las 07:15,crear_alarma
+Me pones una alarma a las ocho de la mañana,crear_alarma
+Haz que suene el despertador en diez minutos,crear_alarma
+Fija una alarma para el viernes,crear_alarma
+Necesito despertarme con una alarma mañana,crear_alarma
+Ponme el despertador en noventa minutos,crear_alarma
+Programa una alarma para dentro de dos horas,crear_alarma
+Ya escuché el despertador puedes pararlo,detener_alarma
+Ese pitido de alarma tiene que parar,detener_alarma
+Haz callar la alarma que se oye,detener_alarma
+Quiero silenciar el aviso sonoro de la alarma,detener_alarma
+Detén ahora el despertador activo,detener_alarma
+Que deje de sonar la alarma,detener_alarma
+Para ese ruido del despertador,detener_alarma
+Ya me desperté quita el sonido de alarma,detener_alarma
+Necesito detener el timbre de la alarma,detener_alarma
+Apaga ese despertador de una vez,detener_alarma
+Suspende el sonido de la alarma actual,detener_alarma
+Haz que se calle el despertador,detener_alarma
+Pon en funcionamiento Paint,abrir_aplicacion
+Arranca el bloc de notas,abrir_aplicacion
+Me hace falta la calculadora ábrela,abrir_aplicacion
+Lanza el programa Spotify,abrir_aplicacion
+Necesito acceder al explorador de archivos,abrir_aplicacion
+Haz aparecer la ventana de Chrome,abrir_aplicacion
+Quisiera empezar a usar la calculadora,abrir_aplicacion
+Inicia el navegador Google Chrome,abrir_aplicacion
+Pon en marcha el programa Paint,abrir_aplicacion
+Puedes lanzar la aplicación de notas,abrir_aplicacion
+Abre para mí el explorador,abrir_aplicacion
+Quiero entrar al navegador Chrome,abrir_aplicacion
+Ejecuta el programa de calculadora,abrir_aplicacion
+Necesito que arranques Spotify,abrir_aplicacion
+Abreme la calculadora porfa,abrir_aplicacion
+Llévame a la aplicación Paint,abrir_aplicacion
+Haz que se abra Notepad,abrir_aplicacion
+Inicia calculadora en este equipo,abrir_aplicacion
+Sal del navegador Chrome,cerrar_aplicacion
+Termina Paint ya acabé de dibujar,cerrar_aplicacion
+No necesito más la calculadora ciérrala,cerrar_aplicacion
+Quiero salir del bloc de notas,cerrar_aplicacion
+Finaliza el programa Spotify,cerrar_aplicacion
+Haz desaparecer la ventana de la calculadora,cerrar_aplicacion
+Termina la sesión de Paint,cerrar_aplicacion
+Puedes cerrar la ventana del explorador,cerrar_aplicacion
+Deseo dejar de usar Chrome ciérralo,cerrar_aplicacion
+Da por terminado el bloc de notas,cerrar_aplicacion
+Cierra para mí el programa de dibujo Paint,cerrar_aplicacion
+Quisiera que salieras de Spotify,cerrar_aplicacion
+Cierra calculadora en este equipo,cerrar_aplicacion
+Salte de la aplicación de notas,cerrar_aplicacion
+Termina la ventana abierta de Chrome,cerrar_aplicacion
+Quiero cerrar el explorador de archivos ahora,cerrar_aplicacion
+Escuchemos la canción Rayando el sol,spotify_reproducir
+Me gustaría oír Bailando en Spotify,spotify_reproducir
+Pon a sonar la canción Color esperanza,spotify_reproducir
+Reanuda lo que estaba escuchando,spotify_reproducir
+Vuelve a reproducir mi música,spotify_reproducir
+Dale al botón de reproducir en Spotify,spotify_reproducir
+Continúa desde donde quedó la canción,spotify_reproducir
+Sigue con la reproducción de Spotify,spotify_reproducir
+Pon la canción Corazón partío,spotify_reproducir
+Quiero que suene Ojalá,spotify_reproducir
+Reproduce algo llamado Bonito,spotify_reproducir
+Activa de nuevo la reproducción musical,spotify_reproducir
+Deja la canción en pausa un rato,spotify_pausar
+Detén temporalmente la reproducción,spotify_pausar
+Necesito un descanso de la música pon pausa,spotify_pausar
+Haz que Spotify pause la pista,spotify_pausar
+Interrumpe lo que estoy escuchando,spotify_pausar
+Ponle pausa a la canción actual,spotify_pausar
+La reproducción musical debe quedar pausada,spotify_pausar
+Paremos la canción un momento,spotify_pausar
+Quiero dejar la música pausada,spotify_pausar
+Pausa por favor lo que suena ahora,spotify_pausar
+Frena la reproducción de Spotify,spotify_pausar
+Interrumpe la pista que se oye,spotify_pausar
+Enséñame a utilizar el asistente,ayuda
+Necesito orientación sobre tus funciones,ayuda
+Cuál es la lista de órdenes admitidas,ayuda
+Explícame tus posibilidades como asistente,ayuda
+Quiero aprender a manejar EVA,ayuda
+Muéstrame ejemplos de peticiones que entiendes,ayuda
+Qué funciones puedo solicitarte,ayuda
+Cómo se usa esta asistente,ayuda
+Descríbeme las opciones de EVA,ayuda
+Indícame para qué cosas puedes ayudarme,ayuda
+Quiero conocer tus capacidades locales,ayuda
+Qué cosas sabes realizar en el ordenador,ayuda
+Guíame para utilizar tus comandos,ayuda
+Necesito instrucciones de uso,ayuda
+Qué tipo de órdenes aceptas,ayuda
+Ayúdame a entender cómo funcionas,ayuda
+Cancela todos los avisos almacenados,fuera_de_alcance
+Desactiva la protección del equipo,fuera_de_alcance
+Desinstala el programa de dibujo,fuera_de_alcance
+Borra la carpeta de descargas,fuera_de_alcance
+Reinicia el ordenador al terminar,fuera_de_alcance
+Elimina las alarmas futuras,fuera_de_alcance
+Modifica la fecha de mi recordatorio,fuera_de_alcance
+Abre el intérprete de comandos de Windows,fuera_de_alcance
+Ejecuta un archivo bat,fuera_de_alcance
+Mueve todos mis documentos a la papelera,fuera_de_alcance
+Transfiere mis fotografías a internet,fuera_de_alcance
+Descarga software desde este enlace,fuera_de_alcance
+Abre una cuenta de correo,fuera_de_alcance
+Cierra mi cuenta de banco,fuera_de_alcance
+Pausa mi suscripción de pago,fuera_de_alcance
+Reproduce el error que tuvo Windows,fuera_de_alcance
+Qué hora tiene mi cita del dentista,fuera_de_alcance
+Cuál fue la fecha de nacimiento de Newton,fuera_de_alcance
+Recuerda todo lo que dije en la conversación,fuera_de_alcance
+Explica qué significa alarma nuclear,fuera_de_alcance
+Necesito ayuda con una ecuación,fuera_de_alcance
+Abre un debate sobre música,fuera_de_alcance
+Cierra el resumen con una conclusión,fuera_de_alcance
+No ejecutes el navegador,fuera_de_alcance
+Nunca pongas música ahora,fuera_de_alcance
+No debes parar la alarma,fuera_de_alcance
+No quiero consultar mis recordatorios,fuera_de_alcance
+Abre Paint y después el bloc de notas,fuera_de_alcance
+Cierra Chrome mientras reproduces música,fuera_de_alcance
+Si llego tarde pon una alarma,fuera_de_alcance
+Cuando se conecte Ana inicia Spotify,fuera_de_alcance
+Haz eso que te pedí antes,fuera_de_alcance
+Actívalo a la misma hora,fuera_de_alcance
+Quiero lo de siempre,fuera_de_alcance
+Pásame la otra cosa,fuera_de_alcance
+Tal vez deberíamos abrir algo,fuera_de_alcance
+Calcula el interés de este préstamo,fuera_de_alcance
+Me recomiendas una película,fuera_de_alcance
+Busca un restaurante cercano,fuera_de_alcance
+Resume el capítulo de historia,fuera_de_alcance
+Traduce una canción al francés,fuera_de_alcance
+Graba la pantalla durante una hora,fuera_de_alcance
+Imprime el documento que estoy leyendo,fuera_de_alcance
+Enciende la cámara del portátil,fuera_de_alcance
+Sube el brillo de la pantalla,fuera_de_alcance
+Conecta los auriculares por bluetooth,fuera_de_alcance
+Cambia mi contraseña de Spotify,fuera_de_alcance
+Publica una historia en mis redes,fuera_de_alcance
+Haz una copia de mis claves,fuera_de_alcance
+Llama a una ambulancia,fuera_de_alcance
+Escribe una receta de cocina,fuera_de_alcance
+Cuéntame las noticias del día,fuera_de_alcance
+Controla la música del televisor,fuera_de_alcance
+Avisa a mi hermano por mensaje,fuera_de_alcance
+Compra la aplicación calculadora,fuera_de_alcance
+Me ayudas a programar en Python,fuera_de_alcance
+Repara los archivos de sistema,fuera_de_alcance
+Apaga Windows en cinco minutos,fuera_de_alcance
+Detén todos los procesos del sistema,fuera_de_alcance
+Organiza los archivos por fecha,fuera_de_alcance

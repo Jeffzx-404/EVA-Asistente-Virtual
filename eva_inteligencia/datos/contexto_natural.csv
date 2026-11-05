@@ -1,0 +1,41 @@
+texto,intencion,categoria,esperado
+Me dices la hora que es ahora mismo,consultar_hora,local,propuesta
+Necesito saber qué hora indica tu reloj,consultar_hora,local,propuesta
+Indícame la fecha actual del ordenador,consultar_fecha,local,propuesta
+Qué día de la semana tenemos hoy EVA,consultar_fecha,local,propuesta
+Recuérdame llevar la llave mañana a las 15:35,crear_recordatorio,local,propuesta
+Avísame de apagar el horno en quince minutos,crear_recordatorio,local,propuesta
+Qué recordatorios están pendientes todavía,consultar_recordatorios,local,propuesta
+Lee los avisos que tengo guardados,consultar_recordatorios,local,propuesta
+Pon una alarma dentro de cuarenta minutos,crear_alarma,local,propuesta
+Programa una alarma para el 21/08/2029 a las 07:40,crear_alarma,local,propuesta
+Necesito detener la alarma que está sonando,detener_alarma,local,propuesta
+Silencia por favor mi despertador,detener_alarma,local,propuesta
+Puedes abrir el programa calculadora,abrir_aplicacion,local,propuesta
+Abre Google Chrome para navegar,abrir_aplicacion,local,propuesta
+Cierra la aplicación del bloc de notas,cerrar_aplicacion,local,propuesta
+Quiero que cierres la calculadora,cerrar_aplicacion,local,propuesta
+Reproduce la canción Eres tú,spotify_reproducir,local,propuesta
+Continúa la música que dejé pausada,spotify_reproducir,local,propuesta
+Pon en pausa la música de Spotify,spotify_pausar,local,propuesta
+Interrumpe la reproducción de la canción actual,spotify_pausar,local,propuesta
+Qué comandos locales puedes entender,ayuda,local,propuesta
+Necesito que me expliques tus capacidades,ayuda,local,propuesta
+Qué fecha vence mi pasaporte,fuera_de_alcance,fecha_personal,rechazo
+Qué día tengo la revisión del automóvil,fuera_de_alcance,fecha_personal,rechazo
+Me indicas a qué hora abre la farmacia,fuera_de_alcance,hora_evento,rechazo
+Qué hora es en Buenos Aires actualmente,fuera_de_alcance,hora_externa,rechazo
+Ayúdame con los ejercicios de geometría,fuera_de_alcance,ayuda_externa,rechazo
+Necesito orientación para redactar mi currículum,fuera_de_alcance,ayuda_externa,rechazo
+Explícame cómo se abre el explorador de archivos,fuera_de_alcance,pregunta,rechazo
+Por qué Spotify pausa mis canciones,fuera_de_alcance,pregunta,rechazo
+Me puedes decir quién inventó el reloj,fuera_de_alcance,pregunta,rechazo
+Cómo puedo crear un recordatorio sin EVA,fuera_de_alcance,pregunta,rechazo
+Qué significa cerrar una aplicación,fuera_de_alcance,pregunta,rechazo
+Explícame cómo funciona la calculadora científica,fuera_de_alcance,pregunta,rechazo
+Recuérdame en diez minutos,crear_recordatorio,incompleta,aclaracion
+Avísame de sacar las galletas,crear_recordatorio,incompleta,aclaracion
+Pon una alarma cuando te parezca,crear_alarma,ambigua,aclaracion
+Abre el programa que uso para trabajar,abrir_aplicacion,ambigua,aclaracion
+Reproduce algo agradable,spotify_reproducir,ambigua,aclaracion
+Cierra la ventana que está al frente,cerrar_aplicacion,ambigua,aclaracion

@@ -1,0 +1,73 @@
+texto,intencion
+EVA me puedes informar la hora actual por favor,consultar_hora
+Necesito conocer el horario que marca tu reloj,consultar_hora
+A ver dime qué hora tenemos ahora,consultar_hora
+Consulta el reloj y dime la hora,consultar_hora
+Me indicas la fecha del día de hoy,consultar_fecha
+Qué día del mes estamos viviendo,consultar_fecha
+Cuál es la fecha que tiene el calendario hoy,consultar_fecha
+Infórmame del día y mes actuales,consultar_fecha
+Recuérdame entregar el informe mañana a las 16:40,crear_recordatorio
+Dentro de treinta minutos avísame de sacar la ropa,crear_recordatorio
+Programa un recordatorio para revisar el horno en veinte minutos,crear_recordatorio
+Necesito que me recuerdes llamar a Teresa el 12/12/2028 a las 14:25,crear_recordatorio
+Enséñame los recordatorios que siguen pendientes,consultar_recordatorios
+Quisiera revisar mis avisos programados,consultar_recordatorios
+Puedes consultar los recordatorios que aún tengo guardados,consultar_recordatorios
+Muéstrame la lista de cosas que debo recordar,consultar_recordatorios
+Haz sonar una alarma dentro de treinta minutos,crear_alarma
+Programa el despertador para mañana a las 06:45,crear_alarma
+Quiero una alarma el 25/12/2028 a las 09:15,crear_alarma
+Pon una alarma para hoy a las 22:10,crear_alarma
+La alarma sigue sonando detén su sonido,detener_alarma
+Silencia ese despertador que está sonando,detener_alarma
+Necesito parar la alarma activa ahora,detener_alarma
+Apaga por favor el sonido de la alarma,detener_alarma
+Inicia la aplicación de calculadora por favor,abrir_aplicacion
+Necesito abrir el bloc de notas para apuntar algo,abrir_aplicacion
+Puedes iniciar Google Chrome ahora,abrir_aplicacion
+Me abres Paint para dibujar,abrir_aplicacion
+Termina la aplicación de calculadora por favor,cerrar_aplicacion
+Quisiera cerrar el bloc de notas que abrí,cerrar_aplicacion
+Puedes cerrar Google Chrome ahora,cerrar_aplicacion
+Cierra Paint cuando puedas,cerrar_aplicacion
+Reproduce la canción Mediterráneo en Spotify,spotify_reproducir
+Pon La flaca en Spotify,spotify_reproducir
+Quiero escuchar La bicicleta,spotify_reproducir
+Reanuda por favor la reproducción musical,spotify_reproducir
+Pausa la canción que está reproduciéndose,spotify_pausar
+Pon en pausa mi música por un momento,spotify_pausar
+Necesito pausar lo que suena en Spotify,spotify_pausar
+Haz una pausa en la reproducción musical,spotify_pausar
+Enséñame los comandos que sabes interpretar,ayuda
+Explícame cómo puedo pedirte las cosas,ayuda
+Quiero consultar tu ayuda de comandos,ayuda
+Qué instrucciones tienes disponibles EVA,ayuda
+No abras la calculadora,fuera_de_alcance
+No pauses la música,fuera_de_alcance
+Abre PowerShell,fuera_de_alcance
+Cierra todos los programas,fuera_de_alcance
+Formatea el disco,fuera_de_alcance
+Abre la calculadora y borra mis archivos,fuera_de_alcance
+Desinstala Spotify de mi equipo,fuera_de_alcance
+Reinicia Windows ahora mismo,fuera_de_alcance
+Ejecuta cmd para cambiar la configuración,fuera_de_alcance
+Dime la hora en Tokio,fuera_de_alcance
+Cuál es el pronóstico del tiempo en Arequipa,fuera_de_alcance
+Traduce esta frase al alemán,fuera_de_alcance
+Escribe un poema sobre los volcanes,fuera_de_alcance
+Compra dos entradas para el cine,fuera_de_alcance
+Envía un correo electrónico a mi profesor,fuera_de_alcance
+Conecta mi computadora a otra red wifi,fuera_de_alcance
+Sube este documento a la nube,fuera_de_alcance
+Crea una cuenta bancaria nueva,fuera_de_alcance
+Transfiere dinero desde mi cuenta,fuera_de_alcance
+Borra todos mis recordatorios pendientes,fuera_de_alcance
+Si llueve mañana cierra Chrome,fuera_de_alcance
+Nunca abras Spotify sin preguntarme,fuera_de_alcance
+Abre el editor del registro,fuera_de_alcance
+Descarga e instala un programa cualquiera,fuera_de_alcance
+Cancela la suscripción de mi tarjeta,fuera_de_alcance
+Modifica las contraseñas guardadas,fuera_de_alcance
+Apaga el antivirus para abrir Paint,fuera_de_alcance
+Abre una terminal y ejecuta este código,fuera_de_alcance
