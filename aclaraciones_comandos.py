@@ -11,6 +11,7 @@ import time
 
 from comandos_voz import preparar_comando, normalizar_intencion
 from eva_inteligencia.contexto import analizar_contexto, validar_contexto
+from ordenes_compuestas import detectar_compuesta, titulo_literal
 from eva_inteligencia.parametros import extraer_parametros, validar_accion
 
 
@@ -129,9 +130,9 @@ class SeguimientoAclaraciones:
             return mensaje('Esa fecha y hora no son válidas o ya pasaron. Repite el recordatorio completo.')
         if datos['tipo'] == 'musica' and titulo:
             consulta = titulo[1].strip()
-            contexto = analizar_contexto('reproduce la canción ' + consulta)
-            if contexto and contexto['tipo'] == 'multiple_o_alternativa':
+            if detectar_compuesta('reproduce la canción ' + consulta):
                 return mensaje('Indica una sola canción, sin añadir otras instrucciones.')
+            consulta = titulo_literal('la canción ' + consulta) or consulta
             try:
                 validar_accion('spotify_reproducir', {'accion': 'reproducir_cancion', 'consulta': consulta})
             except ValueError:

@@ -9,6 +9,9 @@ import time
 
 from interfaz import InterfazEVA
 from eva_inteligencia.observacion import crear_observador
+from eva_inteligencia.fallback_lectura import crear_fallback
+from ordenes_compuestas import detectar_compuesta, titulo_literal
+from diagnostico_comandos import trazar_interaccion, marcar_ruta, ejecutar_accion
 from persistencia import configurar_avisos
 from preferencias import cargar_preferencias, guardar_preferencias as persistir_preferencias
 from metricas_voz import (
@@ -247,6 +250,7 @@ preferencias = cargar_preferencias()
 
 interfaz = InterfazEVA()
 observador_inteligencia = crear_observador()
+fallback_lectura = crear_fallback()
 configurar_avisos(lambda mensaje: interfaz.agregar_mensaje("EVA", mensaje))
 whisper = ControlWhisper(
     informar=lambda texto: interfaz.agregar_mensaje("EVA", texto),
@@ -259,7 +263,10 @@ def cerrar_servicios():
     try:
         observador_inteligencia.cerrar()
     finally:
-        whisper.cerrar()
+        try:
+            fallback_lectura.cerrar()
+        finally:
+            whisper.cerrar()
 
 
 interfaz.configurar_cierre(cerrar_servicios)
@@ -291,10 +298,12 @@ if preferencias.get(
 # ==================================================
 
 def abrir_aplicacion(aplicacion):
+    abierta = False
 
     if aplicacion == "calculadora":
 
         subprocess.Popen("calc.exe")
+        abierta = True
 
         hablar(
             "Abriendo la calculadora."
@@ -304,6 +313,7 @@ def abrir_aplicacion(aplicacion):
     elif aplicacion == "bloc de notas":
 
         subprocess.Popen("notepad.exe")
+        abierta = True
 
         hablar(
             "Abriendo el bloc de notas."
@@ -313,6 +323,7 @@ def abrir_aplicacion(aplicacion):
     elif aplicacion == "paint":
 
         subprocess.Popen("mspaint.exe")
+        abierta = True
 
         hablar(
             "Abriendo Paint."
@@ -322,6 +333,7 @@ def abrir_aplicacion(aplicacion):
     elif aplicacion == "explorador":
 
         subprocess.Popen("explorer.exe")
+        abierta = True
 
         hablar(
             "Abriendo el explorador de archivos."
@@ -345,6 +357,7 @@ def abrir_aplicacion(aplicacion):
             subprocess.Popen(
                 ruta_chrome
             )
+            abierta = True
 
             hablar(
                 "Abriendo Google Chrome."
@@ -357,6 +370,7 @@ def abrir_aplicacion(aplicacion):
             subprocess.Popen(
                 ruta_chrome_2
             )
+            abierta = True
 
             hablar(
                 "Abriendo Google Chrome."
@@ -374,6 +388,7 @@ def abrir_aplicacion(aplicacion):
         try:
 
             os.startfile("spotify:")
+            abierta = True
 
             hablar(
                 "Abriendo Spotify."
@@ -392,6 +407,7 @@ def abrir_aplicacion(aplicacion):
             f"No sé cómo abrir "
             f"{aplicacion}."
         )
+    return abierta
 
 
 # ==================================================
@@ -537,7 +553,7 @@ seguimiento_comandos = SeguimientoAclaraciones()
 
 
 def guardar_recordatorio_validado(datos):
-    guardado = crear_recordatorio(datos['texto'], datos['fecha'], datos['hora'], datos['minuto'])
+    guardado = ejecutar_accion("crear_recordatorio", crear_recordatorio, datos['texto'], datos['fecha'], datos['hora'], datos['minuto'])
     if not guardado:
         hablar("No pude guardar el recordatorio. Revisa el aviso de almacenamiento.")
         return True
@@ -552,7 +568,7 @@ def reproducir_busqueda_musical(busqueda):
         hablar("Spotify no está configurado en este equipo.")
         return True
     hablar(f"Buscando {busqueda} en Spotify.")
-    resultado = reproducir_cancion(busqueda)
+    resultado = ejecutar_accion("reproducir_cancion", reproducir_cancion, busqueda)
     if resultado["exito"]:
         hablar(f"Reproduciendo {resultado['titulo']} de {resultado['artista']}.")
     else:
@@ -560,11 +576,60 @@ def reproducir_busqueda_musical(busqueda):
     return True
 
 
+def responder_hora_actual():
+    ahora = datetime.now()
+    hablar(f"Son las {ahora.strftime('%H:%M')}.")
+    return True
+
+
+def responder_fecha_actual():
+    ahora = datetime.now()
+    dias = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
+             'septiembre', 'octubre', 'noviembre', 'diciembre']
+    hablar(f"Hoy es {dias[ahora.weekday()]} {ahora.day} de {meses[ahora.month - 1]} de {ahora.year}.")
+    return True
+
+
+def responder_funciones_disponibles():
+    hablar("Puedo consultar la hora y la fecha, abrir y cerrar aplicaciones compatibles, "
+           "gestionar alarmas y recordatorios y controlar música en Spotify cuando esté configurado. "
+           "También puedo responder preguntas con Gemini si está habilitado.")
+    return True
+
+
+def atender_consulta_local(texto):
+    # Sólo se llama cuando ninguna rama tradicional atendió el comando.
+    if getattr(fallback_lectura, 'activado', False) is True:
+        marcar_ruta('fallback', fallback=True)
+    try:
+        intencion = fallback_lectura.consultar(texto, tradicional_reconocido=False)
+    except Exception:
+        return False
+    ejecutores = {'consultar_hora': responder_hora_actual,
+                  'consultar_fecha': responder_fecha_actual,
+                  'ayuda': responder_funciones_disponibles}
+    ejecutor = ejecutores.get(intencion) if isinstance(intencion, str) else None
+    if ejecutor is None:
+        return False
+    diagnosticar("intencion", "fallback_lectura:" + intencion)
+    marcar_ruta('fallback', intenciones=(intencion,))
+    ejecutar_accion(intencion, ejecutor)
+    return True  # No llamar a Gemini ni emitir una segunda respuesta.
+
+
+@trazar_interaccion
 def procesar_comando(comando):
     pregunta_original = comando.strip()
     comando = preparar_comando(comando)
     comando_normalizado = normalizar_intencion(comando)
     comando_limpio = comando
+    compuesta = detectar_compuesta(comando)
+    if compuesta:
+        marcar_ruta('rechazo_compuesta', intenciones=compuesta['intenciones'], motivo=compuesta['motivo'])
+        hablar(compuesta['motivo'])
+        return True
+    marcar_ruta('tradicional')
     turno, aclarada = seguimiento_comandos.recibir(comando, datetime.now())
 
     if comando_limpio in respuestas_broma:
@@ -573,6 +638,7 @@ def procesar_comando(comando):
         return
 
     if aclarada is not None:
+        marcar_ruta('aclaracion')
         if aclarada['tipo'] == 'recordatorio':
             diagnosticar("intencion", "crear_recordatorio")
             return guardar_recordatorio_validado(aclarada['parametros'])
@@ -581,7 +647,12 @@ def procesar_comando(comando):
         hablar(aclarada['mensaje'])
         return True
 
+    titulo = titulo_literal(comando, exigir_peticion=True)
+    if titulo is not None:
+        return reproducir_busqueda_musical(titulo)
+
     if es_consulta_personal(comando):
+        marcar_ruta('rechazo_contexto', motivo='Fecha u hora de un evento personal desconocido.')
         hablar("No conozco la fecha ni la hora de ese evento personal. No voy a suponerlas.")
         return True
 
@@ -592,15 +663,7 @@ def procesar_comando(comando):
     if es_consulta_hora(comando_normalizado):
         diagnosticar("intencion", "hora_local")
 
-        ahora = datetime.now()
-
-        hora_actual = ahora.strftime(
-            "%H:%M"
-        )
-
-        hablar(
-            f"Son las {hora_actual}."
-        )
+        ejecutar_accion("responder_hora_actual", responder_hora_actual)
 
         return
 
@@ -675,7 +738,7 @@ def procesar_comando(comando):
     ):
         diagnosticar("intencion", "abrir_aplicacion")
 
-        abrir_aplicacion(
+        ejecutar_accion("abrir_aplicacion", abrir_aplicacion,
             "calculadora"
         )
 
@@ -685,7 +748,7 @@ def procesar_comando(comando):
         or "abrir bloc de notas" in comando
     ):
 
-        abrir_aplicacion(
+        ejecutar_accion("abrir_aplicacion", abrir_aplicacion,
             "bloc de notas"
         )
 
@@ -695,7 +758,7 @@ def procesar_comando(comando):
         or "abrir paint" in comando
     ):
 
-        abrir_aplicacion(
+        ejecutar_accion("abrir_aplicacion", abrir_aplicacion,
             "paint"
         )
 
@@ -705,7 +768,7 @@ def procesar_comando(comando):
         or "abrir explorador" in comando
     ):
 
-        abrir_aplicacion(
+        ejecutar_accion("abrir_aplicacion", abrir_aplicacion,
             "explorador"
         )
 
@@ -716,7 +779,7 @@ def procesar_comando(comando):
         or "abre google chrome" in comando
     ):
 
-        abrir_aplicacion(
+        ejecutar_accion("abrir_aplicacion", abrir_aplicacion,
             "chrome"
         )
 
@@ -726,7 +789,7 @@ def procesar_comando(comando):
         or "abrir spotify" in comando
     ):
 
-        abrir_aplicacion(
+        ejecutar_accion("abrir_aplicacion", abrir_aplicacion,
             "spotify"
         )
 
@@ -754,7 +817,7 @@ def procesar_comando(comando):
                 f"es {aplicacion}."
             )
 
-            abrir_aplicacion(
+            ejecutar_accion("abrir_aplicacion", abrir_aplicacion,
                 aplicacion
             )
 
@@ -776,7 +839,7 @@ def procesar_comando(comando):
     ):
         diagnosticar("intencion", "cerrar_aplicacion")
 
-        cerrar_aplicacion(
+        ejecutar_accion("cerrar_aplicacion", cerrar_aplicacion,
             "calculadora"
         )
 
@@ -786,7 +849,7 @@ def procesar_comando(comando):
         or "cerrar bloc de notas" in comando
     ):
 
-        cerrar_aplicacion(
+        ejecutar_accion("cerrar_aplicacion", cerrar_aplicacion,
             "bloc de notas"
         )
 
@@ -796,7 +859,7 @@ def procesar_comando(comando):
         or "cerrar paint" in comando
     ):
 
-        cerrar_aplicacion(
+        ejecutar_accion("cerrar_aplicacion", cerrar_aplicacion,
             "paint"
         )
 
@@ -807,7 +870,7 @@ def procesar_comando(comando):
         or "cierra google chrome" in comando
     ):
 
-        cerrar_aplicacion(
+        ejecutar_accion("cerrar_aplicacion", cerrar_aplicacion,
             "chrome"
         )
 
@@ -817,7 +880,7 @@ def procesar_comando(comando):
         or "cerrar spotify" in comando
     ):
 
-        cerrar_aplicacion(
+        ejecutar_accion("cerrar_aplicacion", cerrar_aplicacion,
             "spotify"
         )
 
@@ -833,7 +896,7 @@ def procesar_comando(comando):
             ""
         ).strip()
 
-        if not guardar_preferencias({"nombre_usuario": nombre}):
+        if not ejecutar_accion("guardar_preferencias", guardar_preferencias, {"nombre_usuario": nombre}):
             hablar("No pude guardar tu nombre. Revisa el aviso de almacenamiento.")
             return True
 
@@ -886,7 +949,7 @@ def procesar_comando(comando):
             ""
         ).strip()
 
-        if not guardar_preferencias({"aplicacion_favorita": aplicacion}):
+        if not ejecutar_accion("guardar_preferencias", guardar_preferencias, {"aplicacion_favorita": aplicacion}):
             hablar("No pude guardar tu aplicación favorita. Revisa el aviso de almacenamiento.")
             return True
 
@@ -951,7 +1014,7 @@ def procesar_comando(comando):
 
         busqueda = busqueda.strip()
 
-        buscar_internet(
+        ejecutar_accion("buscar_internet", buscar_internet,
             busqueda
         )
 
@@ -970,7 +1033,7 @@ def procesar_comando(comando):
         or "elimina todos mis recordatorios" in comando
     ):
 
-        resultado = eliminar_todos_recordatorios()
+        resultado = ejecutar_accion("eliminar_todos_recordatorios", eliminar_todos_recordatorios)
 
         if resultado:
             hablar(
@@ -995,7 +1058,7 @@ def procesar_comando(comando):
         or "dime mis recordatorios" in comando
     ):
 
-        pendientes = obtener_recordatorios_pendientes()
+        pendientes = ejecutar_accion("obtener_recordatorios_pendientes", obtener_recordatorios_pendientes)
 
         if pendientes is None:
             hablar("No pude leer tus recordatorios. Revisa el aviso de almacenamiento.")
@@ -1159,7 +1222,7 @@ def procesar_comando(comando):
 
                         # Guardar recordatorio
 
-                        guardado = crear_recordatorio(
+                        guardado = ejecutar_accion("crear_recordatorio", crear_recordatorio,
                             texto,
                             fecha,
                             hora,
@@ -1229,7 +1292,7 @@ def procesar_comando(comando):
     ):
         diagnosticar("intencion", "detener_alarma")
 
-        resultado = detener_alarma()
+        resultado = ejecutar_accion("detener_alarma", detener_alarma)
 
         if resultado:
 
@@ -1345,7 +1408,7 @@ def procesar_comando(comando):
 
                 hora, minuto = momento
 
-                crear_alarma(
+                ejecutar_accion("crear_alarma", crear_alarma,
                     hora,
                     minuto,
                     hablar
@@ -1379,7 +1442,7 @@ def procesar_comando(comando):
 
                 hora, minuto = momento
 
-                crear_alarma(
+                ejecutar_accion("crear_alarma", crear_alarma,
                     hora,
                     minuto,
                     hablar
@@ -1467,7 +1530,7 @@ def procesar_comando(comando):
 
         else:
 
-            if not guardar_preferencias({"musica_favorita": cancion}):
+            if not ejecutar_accion("guardar_preferencias", guardar_preferencias, {"musica_favorita": cancion}):
                 hablar("No pude guardar tu canción favorita. Revisa el aviso de almacenamiento.")
                 return True
 
@@ -1549,7 +1612,7 @@ def procesar_comando(comando):
 
             try:
 
-                resultado = reproducir_cancion(
+                resultado = ejecutar_accion("reproducir_cancion", reproducir_cancion,
                     cancion
                 )
 
@@ -1668,7 +1731,7 @@ def procesar_comando(comando):
         or "que estoy escuchando" in comando
     ):
 
-        resultado = obtener_cancion_actual()
+        resultado = ejecutar_accion("obtener_cancion_actual", obtener_cancion_actual)
 
         if resultado["exito"]:
 
@@ -1710,7 +1773,7 @@ def procesar_comando(comando):
         or "pausa la canción" in comando
     ):
 
-        resultado = pausar_musica()
+        resultado = ejecutar_accion("pausar_musica", pausar_musica)
         hablar("Música pausada." if resultado["exito"] else resultado["mensaje"])
 
     # ==================================================
@@ -1726,7 +1789,7 @@ def procesar_comando(comando):
         or "continua reproduciendo" in comando
     ):
 
-        resultado = continuar_musica()
+        resultado = ejecutar_accion("continuar_musica", continuar_musica)
         hablar("Continuando la reproducción." if resultado["exito"] else resultado["mensaje"])
 
     # ==================================================
@@ -1740,7 +1803,7 @@ def procesar_comando(comando):
         or "siguiente musica" in comando
     ):
 
-        resultado = siguiente_cancion()
+        resultado = ejecutar_accion("siguiente_cancion", siguiente_cancion)
         hablar("Siguiente canción." if resultado["exito"] else resultado["mensaje"])
 
     # ==================================================
@@ -1754,7 +1817,7 @@ def procesar_comando(comando):
         or "musica anterior" in comando
     ):
 
-        resultado = cancion_anterior()
+        resultado = ejecutar_accion("cancion_anterior", cancion_anterior)
         hablar("Volviendo a la canción anterior." if resultado["exito"] else resultado["mensaje"])
 
     # ==================================================
@@ -1794,7 +1857,7 @@ def procesar_comando(comando):
 
                 else:
 
-                    resultado = cambiar_volumen(
+                    resultado = ejecutar_accion("cambiar_volumen", cambiar_volumen,
                         volumen
                     )
 
@@ -1831,7 +1894,7 @@ def procesar_comando(comando):
         or "elimina todos mis recordatorios" in comando
     ):
 
-        resultado = eliminar_todos_recordatorios()
+        resultado = ejecutar_accion("eliminar_todos_recordatorios", eliminar_todos_recordatorios)
 
         if resultado:
 
@@ -1853,48 +1916,7 @@ def procesar_comando(comando):
     # ==================================================
 
     elif es_consulta_fecha(comando_normalizado):
-
-        ahora = datetime.now()
-
-        dias = [
-            "lunes",
-            "martes",
-            "miércoles",
-            "jueves",
-            "viernes",
-            "sábado",
-            "domingo"
-        ]
-
-        meses = [
-            "enero",
-            "febrero",
-            "marzo",
-            "abril",
-            "mayo",
-            "junio",
-            "julio",
-            "agosto",
-            "septiembre",
-            "octubre",
-            "noviembre",
-            "diciembre"
-        ]
-
-        nombre_dia = dias[
-            ahora.weekday()
-        ]
-
-        nombre_mes = meses[
-            ahora.month - 1
-        ]
-
-        hablar(
-            f"Hoy es {nombre_dia} "
-            f"{ahora.day} de "
-            f"{nombre_mes} de "
-            f"{ahora.year}."
-        )
+        ejecutar_accion("responder_fecha_actual", responder_fecha_actual)
 
 
     # ==================================================
@@ -1906,7 +1928,7 @@ def procesar_comando(comando):
         or "abrir youtube" in comando
     ):
 
-        abrir_sitio("youtube")
+        ejecutar_accion("abrir_sitio", abrir_sitio, "youtube")
 
 
     elif (
@@ -1914,7 +1936,7 @@ def procesar_comando(comando):
         or "abrir gmail" in comando
     ):
 
-        abrir_sitio("gmail")
+        ejecutar_accion("abrir_sitio", abrir_sitio, "gmail")
 
 
     elif (
@@ -1922,7 +1944,7 @@ def procesar_comando(comando):
         or "abrir wikipedia" in comando
     ):
 
-        abrir_sitio("wikipedia")
+        ejecutar_accion("abrir_sitio", abrir_sitio, "wikipedia")
 
 
     elif (
@@ -1930,7 +1952,7 @@ def procesar_comando(comando):
         or "abrir google" in comando
     ):
 
-        abrir_sitio("google")
+        ejecutar_accion("abrir_sitio", abrir_sitio, "google")
 
 
     elif (
@@ -1938,7 +1960,7 @@ def procesar_comando(comando):
         or "abrir github" in comando
     ):
 
-        abrir_sitio("github")
+        ejecutar_accion("abrir_sitio", abrir_sitio, "github")
 
 
 # ==================================================
@@ -1979,7 +2001,7 @@ def procesar_comando(comando):
 
                 break
 
-        buscar_internet(
+        ejecutar_accion("buscar_internet", buscar_internet,
             busqueda
         )
 
@@ -2010,6 +2032,9 @@ def procesar_comando(comando):
     # ==================================================
 
     else:
+        if atender_consulta_local(pregunta_original):
+            return True
+        marcar_ruta('gemini')
         diagnosticar("intencion", "consulta_general")
 
         hablar(
