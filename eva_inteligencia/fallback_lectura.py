@@ -6,12 +6,34 @@ voz, Tkinter, servicios externos ni datos personales en este trabajador.
 """
 from dataclasses import dataclass, field
 import os
+import re
 from queue import Empty, Queue
 import threading
 import time
 
 
 PERMITIDAS = frozenset(('consultar_hora', 'consultar_fecha', 'ayuda'))
+
+
+def _es_ayuda_local(texto):
+    """Contrato de ayuda en segunda persona; no acepta subcadenas ni temas externos.
+
+    Esta regla no es una predicción del modelo. El contexto experimental rechaza
+    algunas de estas frases como preguntas externas y se conserva independiente.
+    Sólo se devuelve la intención ya autorizada, sin parámetros ni ejecutores.
+    """
+    from comandos_voz import normalizar_intencion
+    from ordenes_compuestas import detectar_compuesta
+    from .seguridad import revisar_seguridad
+    if revisar_seguridad(texto) or detectar_compuesta(texto):
+        return False
+    return re.fullmatch(
+        r'(?:por favor )?(?:'
+        r'explicame (?:tus funciones|que (?:cosas )?sabes hacer)|'
+        r'que puedes hacer(?: por mi)?|'
+        r'cuales son tus funciones|'
+        r'que comandos tienes disponibles'
+        r')(?: por favor)?', normalizar_intencion(texto)) is not None
 
 
 def _cargar_analizador():
@@ -73,6 +95,12 @@ class FallbackLectura:
         if (not self.activado or tradicional_reconocido is not False or self._cerrado.is_set()
                 or not isinstance(texto, str) or not texto.strip() or len(texto) > 1000):
             return None
+        try:
+            if 'ayuda' in PERMITIDAS and _es_ayuda_local(texto):
+                with self._bloqueo:
+                    return None if self._cerrado.is_set() else 'ayuda'
+        except Exception:
+            return None  # Mantener el enrutador funcional si falla la validación.
         peticion = _Peticion(texto, time.monotonic() + self._espera)
         try:
             with self._bloqueo:
