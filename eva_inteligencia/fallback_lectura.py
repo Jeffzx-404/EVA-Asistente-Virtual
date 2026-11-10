@@ -71,10 +71,21 @@ class _Peticion:
     texto: str
     vence: float
     terminada: threading.Event = field(default_factory=threading.Event)
-    intencion: str | None = None
+    intencion: str | dict | None = None
 
 
 class FallbackLectura:
+    # Puntos de extensión para reutilizar cola, plazos y cierre sin compartir
+    # permisos ni estado conversacional con otros tipos de propuestas.
+    def _respuesta_directa(self, texto):
+        return 'ayuda' if 'ayuda' in PERMITIDAS and _es_ayuda_local(texto) else None
+
+    def _cargar(self):
+        return _cargar_analizador()
+
+    def _interpretar(self, texto, analizar):
+        return _autorizar(texto, analizar(texto))
+
     def __init__(self, activado=False, *, capacidad=4, espera=5.0):
         if capacidad < 1 or espera <= 0:
             raise ValueError('Capacidad y espera deben ser positivas.')
@@ -96,9 +107,10 @@ class FallbackLectura:
                 or not isinstance(texto, str) or not texto.strip() or len(texto) > 1000):
             return None
         try:
-            if 'ayuda' in PERMITIDAS and _es_ayuda_local(texto):
+            directa = self._respuesta_directa(texto)
+            if directa is not None:
                 with self._bloqueo:
-                    return None if self._cerrado.is_set() else 'ayuda'
+                    return None if self._cerrado.is_set() else directa
         except Exception:
             return None  # Mantener el enrutador funcional si falla la validación.
         peticion = _Peticion(texto, time.monotonic() + self._espera)
@@ -149,7 +161,7 @@ class FallbackLectura:
                     continue
                 if analizar is None:
                     try:
-                        analizar = _cargar_analizador()
+                        analizar = self._cargar()
                     except Exception:
                         # No reintentar una carga fallida en cada consulta ni cambiar de modelo.
                         self.cerrar()
@@ -157,7 +169,7 @@ class FallbackLectura:
                 if self._cerrado.is_set() or time.monotonic() >= peticion.vence:
                     continue
                 try:
-                    intencion = _autorizar(peticion.texto, analizar(peticion.texto))
+                    intencion = self._interpretar(peticion.texto, analizar)
                     if not self._cerrado.is_set() and time.monotonic() < peticion.vence:
                         peticion.intencion = intencion
                 except Exception:

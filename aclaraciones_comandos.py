@@ -84,12 +84,18 @@ class SeguimientoAclaraciones:
         self._turno = 0
         self._pendiente = None
 
-    def guardar(self, datos, turno):
+    def guardar(self, datos, turno, *, vence=None):
         with self._bloqueo:
             if turno != self._turno:
                 return False
-            self._pendiente = (deepcopy(datos), self._reloj() + self._caducidad)
+            limite = self._reloj() + self._caducidad
+            self._pendiente = (deepcopy(datos), min(limite, vence) if vence is not None else limite)
             return True
+
+    def descartar(self, turno):
+        with self._bloqueo:
+            if turno == self._turno:
+                self._pendiente = None
 
     def recibir(self, texto, ahora):
         t = normalizar_intencion(texto)
@@ -107,6 +113,23 @@ class SeguimientoAclaraciones:
                         or re.match(r'^(?:a las? )?\d{1,2}:', original)
                         or titulo is not None or (pendiente and t.startswith('no ')))
         mensaje = lambda contenido: (turno, {'tipo': 'mensaje', 'mensaje': contenido})
+        inteligente = pendiente and pendiente[0]['tipo'] == 'recordatorio_inteligente'
+        if inteligente:
+            # La propuesta se consumió bajo el mismo bloqueo que las aclaraciones
+            # tradicionales: dos «sí» no pueden obtener los mismos parámetros.
+            from eva_inteligencia.propuestas_recordatorios import responder_propuesta
+            respuesta = None if cancelacion else responder_propuesta(pendiente[0], texto, ahora)
+            if (respuesta is not None or cancelacion) and self._reloj() >= pendiente[1]:
+                return turno, dict(tipo='mensaje', estado='caducado',
+                    mensaje='La propuesta caducó. No se guardó nada. Repite la solicitud completa.')
+            if cancelacion:
+                return turno, dict(tipo='mensaje', estado='cancelado',
+                    mensaje='Propuesta cancelada. No se guardó ningún recordatorio.')
+            if respuesta is not None:
+                siguiente = respuesta.pop('pendiente', None)
+                if siguiente is not None and not self.guardar(siguiente, turno, vence=pendiente[1]):
+                    return mensaje('Llegó otra instrucción. Repite el recordatorio completo para revisarlo.')
+                return turno, respuesta
         if cancelacion:
             return mensaje('Aclaración cancelada. No se realizó ninguna acción pendiente.' if pendiente
                            else 'No hay una aclaración pendiente que cancelar.')

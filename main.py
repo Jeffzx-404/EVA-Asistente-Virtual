@@ -10,6 +10,8 @@ import time
 from interfaz import InterfazEVA
 from eva_inteligencia.observacion import crear_observador
 from eva_inteligencia.fallback_lectura import crear_fallback
+from eva_inteligencia.fallback_recordatorios import crear_fallback_recordatorios
+from eva_inteligencia.propuestas_recordatorios import mensaje_propuesta, validar_propuesta
 from ordenes_compuestas import detectar_compuesta, titulo_literal
 from diagnostico_comandos import trazar_interaccion, marcar_ruta, ejecutar_accion
 from persistencia import configurar_avisos
@@ -251,6 +253,7 @@ preferencias = cargar_preferencias()
 interfaz = InterfazEVA()
 observador_inteligencia = crear_observador()
 fallback_lectura = crear_fallback()
+fallback_recordatorios = crear_fallback_recordatorios()
 configurar_avisos(lambda mensaje: interfaz.agregar_mensaje("EVA", mensaje))
 whisper = ControlWhisper(
     informar=lambda texto: interfaz.agregar_mensaje("EVA", texto),
@@ -266,7 +269,10 @@ def cerrar_servicios():
         try:
             fallback_lectura.cerrar()
         finally:
-            whisper.cerrar()
+            try:
+                fallback_recordatorios.cerrar()
+            finally:
+                whisper.cerrar()
 
 
 interfaz.configurar_cierre(cerrar_servicios)
@@ -618,6 +624,26 @@ def atender_consulta_local(texto):
     return True  # No llamar a Gemini ni emitir una segunda respuesta.
 
 
+def proponer_recordatorio_local(texto, turno):
+    if not fallback_recordatorios.activado:
+        return False
+    marcar_ruta('fallback_recordatorios', fallback=True)
+    try:
+        propuesta = fallback_recordatorios.consultar(texto, tradicional_reconocido=False)
+        if propuesta is None:
+            return False
+        if not seguimiento_comandos.guardar(propuesta, turno):
+            hablar('Llegó otra instrucción. Repite el recordatorio completo para revisarlo.')
+            return True
+        marcar_ruta(propuesta['estado'], intenciones=('crear_recordatorio',))
+        hablar(mensaje_propuesta(propuesta))
+        return True
+    except Exception:
+        seguimiento_comandos.descartar(turno)
+        hablar('No pude preparar una propuesta segura. No se guardó ningún recordatorio.')
+        return True
+
+
 @trazar_interaccion
 def procesar_comando(comando):
     pregunta_original = comando.strip()
@@ -639,6 +665,19 @@ def procesar_comando(comando):
 
     if aclarada is not None:
         marcar_ruta('aclaracion')
+        if 'estado' in aclarada:
+            marcar_ruta(aclarada['estado'], intenciones=('crear_recordatorio',))
+        if aclarada['tipo'] == 'recordatorio_confirmado':
+            if not fallback_recordatorios.acepta_confirmaciones:
+                marcar_ruta('cancelado')
+                hablar('La creación inteligente está desactivada o cerrada. No se guardó el recordatorio.')
+                return True
+            try:
+                datos = validar_propuesta(aclarada['parametros'], datetime.now())
+                return guardar_recordatorio_validado(datos)
+            except Exception:
+                hablar('No pude confirmar el guardado. Revisa los recordatorios antes de volver a intentarlo.')
+                return True
         if aclarada['tipo'] == 'recordatorio':
             diagnosticar("intencion", "crear_recordatorio")
             return guardar_recordatorio_validado(aclarada['parametros'])
@@ -2033,6 +2072,8 @@ def procesar_comando(comando):
 
     else:
         if atender_consulta_local(pregunta_original):
+            return True
+        if proponer_recordatorio_local(pregunta_original, turno):
             return True
         marcar_ruta('gemini')
         diagnosticar("intencion", "consulta_general")
