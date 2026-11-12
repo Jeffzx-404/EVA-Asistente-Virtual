@@ -33,6 +33,7 @@ def validar_recordatorios(datos):
 
 
 _almacen = AlmacenJSON("recordatorios.json", validar_recordatorios, list)
+_cierre = threading.Event()
 
 
 def cargar_recordatorios():
@@ -127,20 +128,32 @@ def revisar_recordatorios(funcion_aviso, ahora=None):
 
 
 def iniciar_recordatorios(funcion_aviso):
+    if _cierre.is_set():
+        return None
+
+    def avisar_si_abierto(texto):
+        return False if _cierre.is_set() else funcion_aviso(texto)
+
     def vigilar():
-        while True:
+        while not _cierre.is_set():
             try:
-                correcto = revisar_recordatorios(funcion_aviso)
+                correcto = revisar_recordatorios(avisar_si_abierto)
             except Exception:
                 correcto = False
                 avisar("No se pudieron revisar los recordatorios. Se conservan "
                        "los datos y se reintentará en 30 segundos.")
             # Evitar una sucesión de avisos ante fallos persistentes. Al arrancar
             # se revisa inmediatamente, incluyendo todos los atrasados.
-            time.sleep(5 if correcto else 30)
+            _cierre.wait(5 if correcto else 30)
 
     hilo = threading.Thread(target=vigilar, daemon=True)
     hilo.start()
+    return hilo
+
+
+def cerrar_recordatorios():
+    """Detener próximas revisiones; una transacción ya iniciada conserva su atomicidad."""
+    _cierre.set()
 
 
 def eliminar_todos_recordatorios():

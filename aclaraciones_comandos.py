@@ -111,7 +111,8 @@ class SeguimientoAclaraciones:
         titulo = re.fullmatch(r'(?:la )?canci[oó]n\s+(.+)', original)
         es_respuesta = (re.match(r'^(?:(?:de la|por la) (?:manana|tarde|noche)|am|pm|si)\b', t)
                         or re.match(r'^(?:a las? )?\d{1,2}:', original)
-                        or titulo is not None or (pendiente and t.startswith('no ')))
+                        or (titulo is not None and (pendiente is not None or t != 'cancion anterior'))
+                        or (pendiente and t.startswith('no ')))
         mensaje = lambda contenido: (turno, {'tipo': 'mensaje', 'mensaje': contenido})
         inteligente = pendiente and pendiente[0]['tipo'] == 'recordatorio_inteligente'
         if inteligente:

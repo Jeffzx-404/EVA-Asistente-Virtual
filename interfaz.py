@@ -408,6 +408,10 @@ class InterfazEVA:
                 return
         self._temporizador = self.ventana.after(30, self._vaciar_cola)
 
+    def solicitar_cierre(self):
+        """Los comandos de texto/voz solicitan el cierre sin llamar Tk desde su hilo."""
+        self._programar(self._cerrar)
+
     def _cerrar(self):
         if self._cerrando.is_set():
             return

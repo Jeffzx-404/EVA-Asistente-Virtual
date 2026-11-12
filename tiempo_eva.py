@@ -44,6 +44,52 @@ def convertir_numero(texto):
     return NUMEROS.get(texto)
 
 
+def interpretar_momento_alarma(texto, ahora=None):
+    """Momento local completo, sin ejecutar ni modificar los analizadores heredados.
+
+    Reutiliza el parser temporal conservador. Sólo las horas sin fecha admiten
+    próxima ocurrencia; una fecha explícita nunca se desplaza al día siguiente.
+    """
+    from comandos_voz import preparar_comando, normalizar_intencion
+    from eva_inteligencia.parametros import _momento
+
+    ahora = ahora or datetime.now()
+    if ahora.tzinfo is not None:
+        ahora = ahora.astimezone().replace(tzinfo=None)
+    comando = preparar_comando(texto)
+    orden = re.fullmatch(
+        r'(?:por favor\s+)?(?:(?:pon|poner|crea|crear|programa|programar) '
+        r'(?:una )?alarma|alarma|despi[eé]rtame)\b\s*(.*?)(?:\s+por favor)?', comando)
+    if not orden or not orden[1]:
+        raise ValueError('Indica la fecha y una hora completa para la alarma.')
+    temporal = re.sub(r'\bpara (las|la)\b', r'a \1', orden[1])
+    # Primero respetar la fecha o duración originales. Las otras alternativas
+    # sólo pueden completar una hora sola: dos fechas o texto sobrante fallan.
+    candidatos = ((temporal, False), ('hoy ' + temporal, True),
+                  ('hoy a las ' + temporal, True))
+    for expresion, sin_fecha in candidatos:
+        try:
+            momento, tramos = _momento(expresion, ahora)
+        except (ValueError, OverflowError, OSError):
+            continue
+        resto = expresion
+        for inicio, fin in sorted(tramos, reverse=True):
+            resto = resto[:inicio] + ' ' + resto[fin:]
+        permitidos = ('', 'para') if sin_fecha else ('', 'para', 'el', 'para el')
+        if normalizar_intencion(resto) not in permitidos:
+            raise ValueError('No pude interpretar toda la fecha y hora. Repite una sola alarma completa.')
+        if sin_fecha and momento <= ahora:
+            momento += timedelta(days=1)
+        if momento <= ahora:
+            raise ValueError('La fecha y hora solicitadas ya pasaron. Indica otra; no la cambiaré de día.')
+        if (datetime.fromtimestamp(momento.timestamp()) != momento
+                or momento.replace(fold=1).timestamp() != momento.timestamp()):
+            raise ValueError('La hora local es ambigua o inexistente por cambio de horario. Indica otra.')
+        return momento
+    raise ValueError('Indica una fecha y hora inequívocas, con mañana/tarde o formato de 24 horas; '
+                     'por ejemplo: mañana a las 18:00. Repite la instrucción completa.')
+
+
 # ==================================================
 # INTERPRETAR UNA HORA
 # ==================================================

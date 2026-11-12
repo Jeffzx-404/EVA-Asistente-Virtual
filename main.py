@@ -35,15 +35,18 @@ from gemini_control import (
 from urllib.parse import quote
 from alarmas import (
     crear_alarma,
-    detener_alarma
+    detener_alarma,
+    cerrar_alarmas
 )
 from recordatorios import (
     crear_recordatorio,
     iniciar_recordatorios,
     obtener_recordatorios_pendientes,
-    eliminar_todos_recordatorios
+    eliminar_todos_recordatorios,
+    cerrar_recordatorios
 )
 from tiempo_eva import (
+    interpretar_momento_alarma,
     interpretar_hora,
     interpretar_en_minutos,
     interpretar_fecha,
@@ -97,7 +100,10 @@ bloqueo_voz = threading.Lock()
 def hablar(texto):
 
     medir_primera_respuesta()
-    print("EVA:", texto)
+    try:
+        print("EVA:", texto)
+    except (OSError, UnicodeError):
+        pass  # La consola es opcional; no debe impedir la voz ni la interfaz.
 
     interfaz.agregar_mensaje(
         "EVA",
@@ -139,9 +145,10 @@ def hablar(texto):
             try:
                 motor_voz.runAndWait()
             finally:
-                interfaz.finalizar_actividad("HABLANDO")
-
-            motor_voz.stop()
+                try:
+                    motor_voz.stop()
+                finally:
+                    interfaz.finalizar_actividad("HABLANDO")
 
     except Exception as error:
 
@@ -263,6 +270,9 @@ whisper = ControlWhisper(
     ),
 )
 def cerrar_servicios():
+    # Señales no bloqueantes: no esperar a diálogos ni al almacén desde Tk.
+    cerrar_recordatorios()
+    cerrar_alarmas()
     try:
         observador_inteligencia.cerrar()
     finally:
@@ -690,6 +700,13 @@ def procesar_comando(comando):
     if titulo is not None:
         return reproducir_busqueda_musical(titulo)
 
+    # Las respuestas pendientes se atienden antes; los títulos literales no son
+    # negaciones de una orden. Una negación inicial nunca autoriza efectos.
+    if re.match(r"^(?:por favor )?(?:no|nunca|jamas|tampoco|ni)\b", comando_normalizado):
+        marcar_ruta('rechazo_contexto', motivo='Petición negativa; no autoriza acciones.')
+        hablar('La instrucción contiene una negación. Indica qué deseas hacer; no ejecuté ninguna acción.')
+        return True
+
     if es_consulta_personal(comando):
         marcar_ruta('rechazo_contexto', motivo='Fecha u hora de un evento personal desconocido.')
         hablar("No conozco la fecha ni la hora de ese evento personal. No voy a suponerlas.")
@@ -1063,13 +1080,9 @@ def procesar_comando(comando):
     # ELIMINAR TODOS LOS RECORDATORIOS
     # ==================================================
 
-    elif (
-        "elimina todos los recordatorios" in comando
-        or "eliminar todos los recordatorios" in comando
-        or "borra todos los recordatorios" in comando
-        or "borrar todos los recordatorios" in comando
-        or "borra todos mis recordatorios" in comando
-        or "elimina todos mis recordatorios" in comando
+    elif re.fullmatch(
+        r"(?:por favor )?(?:elimina|eliminar|borra|borrar) todos (?:los|mis) recordatorios(?: por favor)?",
+        comando_normalizado,
     ):
 
         resultado = ejecutar_accion("eliminar_todos_recordatorios", eliminar_todos_recordatorios)
@@ -1352,180 +1365,26 @@ def procesar_comando(comando):
     # ==================================================
 
 
-    elif (
-    "alarma" in comando_normalizado
-    or comando_normalizado.startswith("despiertame ")
+    elif re.match(
+        r"^(?:por favor )?(?:(?:pon|poner|crea|crear|programa|programar) (?:una )?alarma|alarma|despiertame)\b",
+        comando_normalizado,
     ):
         diagnosticar("intencion", "crear_alarma")
 
-        hora_texto = comando
-
-        # ----------------------------------------------
-        # Quitar solamente la orden de crear alarma
-        # ----------------------------------------------
-
-        frases_alarma = [
-            "pon una alarma",
-            "pon alarma",
-            "poner una alarma",
-            "crea una alarma",
-            "crear una alarma",
-            "programa una alarma",
-            "programar una alarma",
-            "despiértame",
-            "despiertame",
-            "alarma"
-        ]
-
-        for frase in frases_alarma:
-
-            if hora_texto.startswith(frase):
-
-                hora_texto = hora_texto.replace(
-                    frase,
-                    "",
-                    1
-                ).strip()
-
-                break
-
-        # ----------------------------------------------
-        # Quitar "a las" o "para las"
-        # SIN quitar "de la tarde", "de la noche", etc.
-        # ----------------------------------------------
-
-        if hora_texto.startswith("para las "):
-
-            hora_texto = hora_texto.replace(
-                "para las ",
-                "",
-                1
-            ).strip()
-
-        elif hora_texto.startswith("a las "):
-
-            hora_texto = hora_texto.replace(
-                "a las ",
-                "",
-                1
-            ).strip()
-
-        print(
-            "Hora que EVA interpretará:",
-            hora_texto
-        )
-
-        # ==================================================
-        # ALARMA RELATIVA
-        # EN / DENTRO DE X MINUTOS U HORAS
-        # ==================================================
-
-        if (
-            (
-                " en " in comando
-                or "dentro de " in comando
-            )
-            and (
-                "minuto" in comando
-                or "hora" in comando
-            )
-        ):
-
-            momento = interpretar_en_minutos(
-                comando
-            )
-
-            if momento is None:
-
-                hablar(
-                    "No pude entender dentro "
-                    "de cuánto tiempo quieres "
-                    "la alarma."
-                )
-
-            else:
-
-                hora, minuto = momento
-
-                ejecutar_accion("crear_alarma", crear_alarma,
-                    hora,
-                    minuto,
-                    hablar
-                )
-
-                hablar(
-                    f"De acuerdo. "
-                    f"Alarma programada para "
-                    f"las {hora:02d}:{minuto:02d}."
-                )
-
-
-        # ==================================================
-        # ALARMA A UNA HORA ESPECÍFICA
-        # ==================================================
-
+        try:
+            momento = interpretar_momento_alarma(comando, datetime.now())
+        except (ValueError, OverflowError, OSError) as error:
+            hablar(str(error))
+            return True
+        try:
+            creada = ejecutar_accion("crear_alarma", crear_alarma,
+                                     momento.hour, momento.minute, hablar, momento=momento)
+        except Exception:
+            creada = False
+        if creada is True:
+            hablar(f"Alarma programada para el {momento:%d/%m/%Y} a las {momento:%H:%M}, hora local.")
         else:
-
-            momento = interpretar_hora(
-                hora_texto
-            )
-
-            if momento is None:
-
-                hablar(
-                    "No pude entender "
-                    "la hora de la alarma."
-                )
-
-            else:
-
-                hora, minuto = momento
-
-                ejecutar_accion("crear_alarma", crear_alarma,
-                    hora,
-                    minuto,
-                    hablar
-                )
-
-                # ------------------------------------------
-                # Respuesta natural
-                # ------------------------------------------
-
-                if "de la mañana" in hora_texto:
-
-                    periodo = "de la mañana"
-
-                elif "de la tarde" in hora_texto:
-
-                    periodo = "de la tarde"
-
-                elif "de la noche" in hora_texto:
-
-                    periodo = "de la noche"
-
-                else:
-
-                    periodo = ""
-
-                if periodo:
-
-                    hora_respuesta = hora
-
-                    if hora_respuesta > 12:
-                        hora_respuesta -= 12
-
-                    hablar(
-                        f"Alarma programada para las "
-                        f"{hora_respuesta}:{minuto:02d} "
-                        f"{periodo}."
-                    )
-
-                else:
-
-                    hablar(
-                        f"Alarma programada para las "
-                        f"{hora:02d}:{minuto:02d}."
-                    )
+            hablar("No pude programar la alarma. Revisa la fecha y hora y vuelve a intentarlo.")
 
 
     # ==================================================
@@ -1802,15 +1661,8 @@ def procesar_comando(comando):
     # SPOTIFY - PAUSAR
     # ==================================================
 
-    elif (
-        "pausa la música" in comando
-        or "pausa la musica" in comando
-        or "pausar música" in comando
-        or "pausar musica" in comando
-        or "pausar cancion" in comando
-        or "pausa la cancion" in comando
-        or "pausa la canción" in comando
-    ):
+    elif re.fullmatch(r"(?:por favor )?(?:pausa la (?:musica|cancion)|pausar (?:musica|cancion))(?: por favor)?",
+                      comando_normalizado):
 
         resultado = ejecutar_accion("pausar_musica", pausar_musica)
         hablar("Música pausada." if resultado["exito"] else resultado["mensaje"])
@@ -1819,14 +1671,8 @@ def procesar_comando(comando):
     # SPOTIFY - CONTINUAR
     # ==================================================
 
-    elif (
-        "continúa la música" in comando
-        or "continua la musica" in comando
-        or "reanuda la música" in comando
-        or "reanuda la musica" in comando
-        or "continúa reproduciendo" in comando
-        or "continua reproduciendo" in comando
-    ):
+    elif re.fullmatch(r"(?:por favor )?(?:(?:continua|reanuda) la musica|continua reproduciendo)(?: por favor)?",
+                      comando_normalizado):
 
         resultado = ejecutar_accion("continuar_musica", continuar_musica)
         hablar("Continuando la reproducción." if resultado["exito"] else resultado["mensaje"])
@@ -1835,12 +1681,8 @@ def procesar_comando(comando):
     # SPOTIFY - SIGUIENTE CANCIÓN
     # ==================================================
 
-    elif (
-        "siguiente canción" in comando
-        or "siguiente cancion" in comando
-        or "siguiente música" in comando
-        or "siguiente musica" in comando
-    ):
+    elif re.fullmatch(r"(?:por favor )?siguiente (?:cancion|musica)(?: por favor)?",
+                      comando_normalizado):
 
         resultado = ejecutar_accion("siguiente_cancion", siguiente_cancion)
         hablar("Siguiente canción." if resultado["exito"] else resultado["mensaje"])
@@ -1849,12 +1691,8 @@ def procesar_comando(comando):
     # SPOTIFY - CANCIÓN ANTERIOR
     # ==================================================
 
-    elif (
-        "canción anterior" in comando
-        or "cancion anterior" in comando
-        or "música anterior" in comando
-        or "musica anterior" in comando
-    ):
+    elif re.fullmatch(r"(?:por favor )?(?:cancion|musica) anterior(?: por favor)?",
+                      comando_normalizado):
 
         resultado = ejecutar_accion("cancion_anterior", cancion_anterior)
         hablar("Volviendo a la canción anterior." if resultado["exito"] else resultado["mensaje"])
@@ -1917,36 +1755,6 @@ def procesar_comando(comando):
 
             hablar(
                 "No pude reconocer el volumen."
-            )
-
-
-    # ==================================================
-    # ELIMINAR TODOS LOS RECORDATORIOS
-    # ==================================================
-
-    elif (
-        "elimina todos los recordatorios" in comando
-        or "eliminar todos los recordatorios" in comando
-        or "borra todos los recordatorios" in comando
-        or "borrar todos los recordatorios" in comando
-        or "borra todos mis recordatorios" in comando
-        or "elimina todos mis recordatorios" in comando
-    ):
-
-        resultado = ejecutar_accion("eliminar_todos_recordatorios", eliminar_todos_recordatorios)
-
-        if resultado:
-
-            hablar(
-                "He eliminado todos "
-                "tus recordatorios."
-            )
-
-        else:
-
-            hablar(
-                "No pude eliminar "
-                "los recordatorios."
             )
 
 
@@ -2051,12 +1859,14 @@ def procesar_comando(comando):
     # ==================================================
 
     elif (
-        "adiós" in comando
-        or "adios" in comando
-        or "hasta luego" in comando
-        or "cerrar eva" in comando
-        or "apágate" in comando
-        or "apagate" in comando
+        re.fullmatch(r"(?:por favor )?(?:adios|hasta luego|apagate|(?:cierra|cerrar) eva)(?: por favor)?",
+                     comando_normalizado)
+        # Preparar_comando retira EVA también como vocativo final. En esta
+        # petición es el destino: exigir la orden original completa con EVA,
+        # sin convertir «cierra»/«cerrar» a solas en una petición de salida.
+        or (comando_normalizado in ("cierra", "cerrar")
+            and re.fullmatch(r"(?:eva[\s¿?¡!.,;:]+)?(?:cierra|cerrar)\s+eva",
+                             pregunta_original.strip(" \t\r\n¿?¡!.,;:"), re.IGNORECASE))
     ):
 
         hablar(
@@ -2094,9 +1904,11 @@ def procesar_desde_interfaz(
         observador_inteligencia.observar(comando, origen="texto")
     except Exception:
         pass
-    procesar_comando(
+    resultado = procesar_comando(
         comando
     )
+    if resultado is False:
+        interfaz.solicitar_cierre()
 
 
 def escuchar_desde_interfaz():
@@ -2106,7 +1918,9 @@ def escuchar_desde_interfaz():
         except Exception:
             pass
         with medir_procesamiento(procesar_comando):
-            procesar_comando(comando)
+            resultado = procesar_comando(comando)
+        if resultado is False:
+            interfaz.solicitar_cierre()
     escuchar(al_reconocer=ejecutar)
 
 def avisar_recordatorio(texto):
