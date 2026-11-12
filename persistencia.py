@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
 import sys
 import tempfile
 import threading
@@ -20,6 +21,9 @@ _bloqueo_avisos = threading.RLock()
 _avisos_pendientes = []
 _avisos_emitidos = set()
 _informar = None
+_pausas_reemplazo = (0.02, 0.05, 0.1, 0.2)
+_bloqueo_diagnostico = threading.Lock()
+_diagnosticos_reemplazo = 0
 _carpeta_programa = (Path(sys.executable).resolve().parent
                      if getattr(sys, "frozen", False)
                      else Path(__file__).resolve().parent)
@@ -64,6 +68,59 @@ def rutas_antiguas(nombre):
     )))
 
 
+def _diagnosticar_reemplazo(intentos, error, inicio, resultado):
+    """Diagnóstico opcional y acotado: nunca rutas, contenido ni excepciones crudas."""
+    global _diagnosticos_reemplazo
+    if os.environ.get("EVA_DIAGNOSTICO_PERSISTENCIA") != "1":
+        return
+    with _bloqueo_diagnostico:
+        if _diagnosticos_reemplazo >= 20:
+            return
+        _diagnosticos_reemplazo += 1
+    try:
+        print(json.dumps({
+            "operacion": "reemplazo_atomico", "resultado": resultado,
+            "intentos": intentos, "winerror": getattr(error, "winerror", None),
+            "errno": error.errno, "milisegundos": round((time.monotonic() - inicio) * 1000, 1),
+        }))
+    except (OSError, UnicodeError, ValueError):
+        pass  # La consola no decide si la escritura fue confirmada.
+
+
+def _permite_reintento(error, temporal, ruta):
+    # Un lector sin FILE_SHARE_DELETE puede provocar 5, además de 32/33.
+    # El mismo 5 también puede ser permanente: nunca cambiar ACL ni atributos.
+    if os.name != "nt" or getattr(error, "winerror", None) not in (5, 32, 33):
+        return False
+    for archivo in (temporal, ruta):
+        try:
+            estado = archivo.stat()
+        except OSError:
+            continue  # Acceso desconocido: sólo se permite el presupuesto limitado.
+        if stat.S_ISDIR(estado.st_mode) or getattr(estado, "st_file_attributes", 0) & 1:
+            return False
+    return True
+
+
+def _reemplazar_atomico(temporal, ruta):
+    """Reintentar sólo la sustitución del MISMO temporal, bajo el bloqueo existente."""
+    inicio = time.monotonic()
+    ultimo_error = None
+    for intento in range(1, len(_pausas_reemplazo) + 2):
+        try:
+            os.replace(temporal, ruta)
+        except OSError as error:
+            ultimo_error = error
+            if intento > len(_pausas_reemplazo) or not _permite_reintento(error, temporal, ruta):
+                _diagnosticar_reemplazo(intento, error, inicio, "fallido")
+                raise
+            time.sleep(_pausas_reemplazo[intento - 1])
+        else:
+            if ultimo_error is not None:
+                _diagnosticar_reemplazo(intento, ultimo_error, inicio, "recuperado")
+            return
+
+
 def escribir_atomico(ruta, contenido):
     """El llamador mantiene el bloqueo. El temporal vive en el mismo volumen."""
     temporal = None
@@ -76,7 +133,7 @@ def escribir_atomico(ruta, contenido):
             archivo.write(contenido)
             archivo.flush()
             os.fsync(archivo.fileno())
-        os.replace(temporal, ruta)
+        _reemplazar_atomico(temporal, ruta)
     finally:
         if temporal is not None:
             try:
@@ -84,6 +141,46 @@ def escribir_atomico(ruta, contenido):
             except OSError:
                 avisar(f"No se pudo limpiar un archivo temporal de {ruta.name}. "
                        f"Se conserva en {ruta.parent}; no es el archivo activo.")
+
+
+@contextmanager
+def exclusion_no_bloqueante(ruta):
+    """Exclusión de procesos independiente del almacén; nunca espera al dueño.
+
+    Usar un archivo dedicado que no se elimine. No toma _bloqueo_hilos;
+    mantenerlo durante un aviso no debe impedir transacciones de datos.
+    """
+    try:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        with open(ruta, "a+b") as archivo:
+            if os.name == "nt":
+                import msvcrt
+                def liberar():
+                    archivo.seek(0)
+                    msvcrt.locking(archivo.fileno(), msvcrt.LK_UNLCK, 1)
+                def adquirir():
+                    archivo.seek(0)
+                    msvcrt.locking(archivo.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                def liberar():
+                    fcntl.flock(archivo.fileno(), fcntl.LOCK_UN)
+                def adquirir():
+                    fcntl.flock(archivo.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            try:
+                adquirir()
+            except (BlockingIOError, PermissionError):
+                yield False
+                return
+            try:
+                yield True
+            finally:
+                liberar()
+    except OSError:
+        raise ErrorPersistencia(
+            "No se pudo coordinar la entrega de recordatorios. Se conservan "
+            "pendientes; revisa los permisos de LOCALAPPDATA\\EVA."
+        ) from None
 
 
 @contextmanager

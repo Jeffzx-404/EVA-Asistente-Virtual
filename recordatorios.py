@@ -3,18 +3,27 @@
 from datetime import datetime
 import threading
 import time
+from uuid import uuid4
 
-from persistencia import AlmacenJSON, ErrorPersistencia, avisar
+from persistencia import (AlmacenJSON, ErrorPersistencia, avisar,
+                         exclusion_no_bloqueante, ruta_local)
 
 
 def validar_recordatorios(datos):
     if not isinstance(datos, list):
         return [], False
+    identidades = set()
     for recordatorio in datos:
         if not isinstance(recordatorio, dict):
             return [], False
         if not isinstance(recordatorio.get("texto"), str):
             return [], False
+        if "id_aviso" in recordatorio:
+            identidad = recordatorio["id_aviso"]
+            if (not isinstance(identidad, str) or not identidad
+                    or len(identidad) > 128 or identidad in identidades):
+                return [], False
+            identidades.add(identidad)
         fecha = recordatorio.get("fecha")
         try:
             if not isinstance(fecha, str) or datetime.strptime(
@@ -34,6 +43,7 @@ def validar_recordatorios(datos):
 
 _almacen = AlmacenJSON("recordatorios.json", validar_recordatorios, list)
 _cierre = threading.Event()
+_revision = threading.Lock()
 
 
 def cargar_recordatorios():
@@ -83,48 +93,71 @@ def obtener_recordatorios_pendientes():
 def revisar_recordatorios(funcion_aviso, ahora=None):
     """Avisar vencidos y eliminarlos sólo con confirmación explícita (True).
 
-    El callback se ejecuta en el vigilante, nunca en el hilo Tk. Mantener la
-    transacción evita que dos vigilantes entreguen el mismo aviso. El callback
-    no debe volver a acceder al almacén ni esperar a otro hilo que lo haga.
-    Si el proceso termina entre aviso y guardado, el aviso puede repetirse:
-    se prefiere esa repetición a perder un recordatorio pendiente.
+    Un guardia independiente serializa notificadores, nunca escritores. El
+    callback se ejecuta SIN transacción; la confirmación relee el almacén y
+    retira sólo la misma identidad y contenido. Un cierre entre aviso y guardado
+    puede repetir el aviso al reiniciar: no se promete entrega exactamente una vez.
     """
     ahora = ahora or datetime.now()
-    todos_entregados = True
+    if not _revision.acquire(blocking=False):
+        return True  # Otro vigilante ya está atendiendo; no esperar ni duplicar.
     try:
-        with _almacen.transaccion() as ruta:
-            recordatorios = _almacen.leer(ruta)
-            indice = 0
-            while indice < len(recordatorios):
-                recordatorio = recordatorios[indice]
-                vencimiento = datetime.strptime(recordatorio["fecha"], "%Y-%m-%d").replace(
-                    hour=recordatorio["hora"], minute=recordatorio["minuto"]
-                )
-                if vencimiento > ahora:
-                    indice += 1
-                    continue
-                # Compatibilidad: los completados de versiones anteriores ya
-                # fueron atendidos. Limpiarlos sin volver a anunciarlos.
-                if not recordatorio.get("completado", False):
-                    try:
-                        entregado = funcion_aviso("Recordatorio. " + recordatorio["texto"])
-                    except Exception:
-                        entregado = False
-                    if entregado is not True:
-                        todos_entregados = False
-                        avisar("No se pudo confirmar un aviso de recordatorio. "
-                               "Se conserva pendiente y se reintentará en 30 segundos.")
-                        indice += 1
-                        continue
-                restantes = recordatorios[:indice] + recordatorios[indice + 1:]
-                # Un guardado por aviso: un fallo posterior no resucita los
-                # anteriores. No avanzar si la escritura no se confirmó.
-                _almacen.guardar(ruta, restantes)
-                recordatorios = restantes
-        return todos_entregados
+        ruta_guardia = ruta_local("recordatorios.json.avisos.lock")
+        with exclusion_no_bloqueante(ruta_guardia) as adquirido:
+            if not adquirido:
+                return True
+            return _entregar_vencidos(funcion_aviso, ahora)
     except ErrorPersistencia as error:
         avisar(str(error))
         return False
+    finally:
+        _revision.release()
+
+
+def _entregar_vencidos(funcion_aviso, ahora):
+    todos_entregados = True
+    with _almacen.transaccion() as ruta:
+        recordatorios = _almacen.leer(ruta)
+        vencidos = []
+        identificados = False
+        for recordatorio in recordatorios:
+            vencimiento = datetime.strptime(recordatorio["fecha"], "%Y-%m-%d").replace(
+                hour=recordatorio["hora"], minute=recordatorio["minuto"])
+            if vencimiento <= ahora:
+                # Identidad estable, no una marca de entrega. Compatible con
+                # archivos antiguos y con dos recordatorios de igual contenido.
+                if "id_aviso" not in recordatorio:
+                    recordatorio["id_aviso"] = uuid4().hex
+                    identificados = True
+                vencidos.append(recordatorio.copy())
+        if identificados:
+            _almacen.guardar(ruta, recordatorios)
+
+    for recordatorio in vencidos:
+        if _cierre.is_set():
+            return False
+        # Puede haberse cancelado/modificado mientras se atendía otro aviso.
+        with _almacen.transaccion() as ruta:
+            if recordatorio not in _almacen.leer(ruta):
+                continue
+        if not recordatorio.get("completado", False):
+            try:
+                entregado = funcion_aviso("Recordatorio. " + recordatorio["texto"])
+            except Exception:
+                entregado = False
+            if entregado is not True:
+                todos_entregados = False
+                avisar("No se pudo confirmar un aviso de recordatorio. "
+                       "Se conserva pendiente y se reintentará en 30 segundos.")
+                continue
+        if _cierre.is_set():
+            return False
+        with _almacen.transaccion() as ruta:
+            actuales = _almacen.leer(ruta)
+            if recordatorio in actuales:
+                actuales.remove(recordatorio)
+                _almacen.guardar(ruta, actuales)
+    return todos_entregados
 
 
 def iniciar_recordatorios(funcion_aviso):

@@ -1,8 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox, scrolledtext, font, ttk
 import threading
+import time
 from queue import Queue, Empty
 
+TIEMPO_DESPACHO_RECORDATORIO = 30
 
 class InterfazEVA:
     """Vista de EVA; los trabajadores envían actualizaciones mediante una cola."""
@@ -558,11 +560,19 @@ class InterfazEVA:
         if threading.get_ident() == self._hilo_interfaz:
             raise RuntimeError("El aviso de recordatorio debe solicitarse desde un trabajador.")
         terminado = threading.Event()
+        iniciado = threading.Event()
+        cancelado = threading.Event()
+        estado = threading.Lock()
+        limite = time.monotonic() + TIEMPO_DESPACHO_RECORDATORIO
         entregado = False
 
         def mostrar():
             nonlocal entregado
             try:
+                with estado:
+                    if cancelado.is_set() or self._cerrando.is_set():
+                        return
+                    iniciado.set()
                 if not self._cerrando.is_set():
                     respuesta = messagebox.showinfo("Recordatorio de EVA", mensaje,
                                                    parent=self.ventana)
@@ -583,7 +593,16 @@ class InterfazEVA:
         self._programar(programar)
         while not terminado.wait(0.1):
             if self._cerrando.is_set():
+                cancelado.set()
                 return False
+            # Una cola detenida no debe retener al vigilante para siempre.
+            # Una vez visible, el diálogo conserva su confirmación humana;
+            # no expira ni permite otro aviso mientras sigue abierto.
+            if time.monotonic() >= limite:
+                with estado:
+                    if not iniciado.is_set():
+                        cancelado.set()
+                        return False
         return entregado
 
     def iniciar(self):
