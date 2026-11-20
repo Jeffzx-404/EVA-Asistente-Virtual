@@ -1,0 +1,16 @@
+{
+  "high": {
+    "vertices": 87601,
+    "triangles": 173605,
+    "bytes": 4186756,
+    "sha256": "1023e35f2aebe86baf196dd4693587633c97668ccbe0038e2b0bf99ea4638a7f"
+  },
+  "paths": 210,
+  "particles": 1400,
+  "low": {
+    "vertices": 38870,
+    "triangles": 86089,
+    "bytes": 1967012,
+    "sha256": "d3dcb98f3bf941aaa1eecdaa63a657924e26850a447f37e9c84c5afabf5773f2"
+  }
+}

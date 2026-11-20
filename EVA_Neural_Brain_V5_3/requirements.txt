@@ -1,0 +1,2 @@
+# Solo ejecución de V5.3. Python 3.13; versión probada: PySide6 6.12.0.
+PySide6>=6.8,<7
